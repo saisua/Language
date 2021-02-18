@@ -1,3 +1,4 @@
+// Internal includes
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -6,10 +7,15 @@
 #include <queue>
 #include <algorithm>
 
+// Local includes
+#include "hyperscan/config.h"
 #include "hyperscan/src/hs.h"
+
+// External includes
 #include <rapidjson/document.h>
 #include <omp.h>
 
+// type definitions
 using val_iterator = std::pair<rapidjson::Value::ConstMemberIterator,rapidjson::Value::ConstMemberIterator>;
 
 // Forward declarations
@@ -18,21 +24,35 @@ std::queue<std::string> rj_all_string_in_obj(std::queue<val_iterator>&remaining)
 // global compiler time settings
 //#define DEBUG false
 
-// IMPORTANT: ASSUME ALL VALUES IN standalones ARE STRING
+/*  
+    IMPORTANT: ASSUME ALL VALUES IN JSON ARE STRING
+
+    This function takes the generated jsonfile::Document& 
+    and returns a vector containing all permutations of
+    the standalones ready-to-be-compiled. The function assumes
+    all data in the .json provided is right 
+*/
 std::vector<std::string> clean(rapidjson::Document &lang){
     std::queue<val_iterator> start = std::queue<val_iterator>();
+
+    /*  Add the initial and last Members of the JSON file to start searching as standalones */
     start.push(val_iterator{lang.FindMember("standalones"), lang.MemberEnd()});
+    /*  Recursively search in the root of lang to search all standalones' final strings */
     std::queue<std::string> raw_regex = rj_all_string_in_obj(start);
 
+    /*  The vector to be returned, will contain the resulting strings */
     std::vector<std::string> result;
 
+    /*  The regex construct. Checks in the string any instance of
+        %tag% */
     std::regex REF_REG ("(?=[^\\\\]|^)%(.*?[^\\\\])%");
-    // Regex string matches
+    /*  Regex string matches */
     std::smatch matches;
-    // Fake matches
+    /*  Fake matches */
     std::smatch fm; 
-    std::string modified;
-    // Permutation groups
+    /*  The substring of the regex remaining to be checked */
+    std::string regex_sub;
+    /*  Permutation groups */
     std::vector<std::string> perm_groups;
     std::vector<std::string> temp;
     int pos = 0;
@@ -44,45 +64,68 @@ std::vector<std::string> clean(rapidjson::Document &lang){
     // TODO: Parallelize
     // This is a n^4 algorithm
     // Although usually it is like a n^3
+
+    /*  Checks all found regex standalones for any tag
+        to be replaced */
     while(!raw_regex.empty()){
+        /*  Groups of permutations. Initialized as an only variation
+            of the regex */
         perm_groups = std::vector<std::string>{""};
         temp = std::vector<std::string>();
 
-        modified = raw_regex.front();
+        /*  The substring of the regex remaining to be checked
+            Initialized as the next regexto be computed */
+        regex_sub = raw_regex.front();
         raw_regex.pop();
 
-        // maybe should be changed to regex_match? This actually works
-        // or regex_iterator
-        while(regex_search(modified, matches, REF_REG)){
-            for(std::string &t : perm_groups)
-                t += modified.substr(0, matches.position());
+        /*  maybe should be changed to regex_match? This actually works
+            or regex_iterator */
 
-            // Search in json using groups
-            // generate combinations, then
-            // if % in json val, raw_regex.push
-            // else, result.push_back
+        /*  Checks for any %tag% in the regex_sub string.
+            For every tag, replace it with the appropiate regex */
+        while(regex_search(regex_sub, matches, REF_REG)){
+            /*  Add the non-tag part of the original regex
+                to all current variations of the regex */
+            for(std::string &t : perm_groups)
+                t += regex_sub.substr(0, matches.position());
+
+            /*  Get the iterator of the members of the root of the JSON */
             rapidjson::Value::ConstMemberIterator search_iter = lang.MemberBegin();
 
+            /*  Get the entire matched regex sequence. The compiled regex
+                does not use any groups, si this is not a problem */
             std::string match = matches[0];
+            /*  Remove the last '%' */
             match.pop_back();
+            /*  Get the pointer of the match to iterate over it.
+                Also, remove the first '%' */
             const char* char_match = match.c_str()+1;
+            /*  Since we are using the match string to capture the path, 
+                clear it from any previous stored data */
             match.clear();
 
             #ifdef DEBUG
             printf("\nPath: ");
             #endif
-            // Extract the json path of the replace values
-            // Keep comparison to last '\0' just in case any
-            // tag in the file contains a "\\%"
+            /*  Extract the json path of the replace values
+                Keep comparison to last '\0' just in case any
+                tag in the file contains a "\\%" */
             for(; *char_match != '\0'; ++char_match){
+                /*  If the next character is an underscore, the next 
+                    step in the path is already known and as so, we
+                    can already access it */
                 if(*char_match == '_'){
                     #ifdef DEBUG
                     std::cout << match << " > " << std::flush;
                     #endif
 
+                    /*  Search in the current path of the JSON file the
+                        tag we are looking for */
                     for(; (*search_iter).name != match.c_str(); search_iter++);
+                    /*  Get the iterator of the members of the new path */
                     search_iter = (*search_iter).value.MemberBegin();
                     
+                    /*  Clear the string to look for the next path */
                     match.clear();
                 } else 
                     match += *char_match;
@@ -90,6 +133,8 @@ std::vector<std::string> clean(rapidjson::Document &lang){
             #ifdef DEBUG
             std::cout << match << std::endl;
             #endif
+            /*  Assuming the path is complete, look for the final folder to
+                find in the found path */
             for(; (*search_iter).name != match.c_str(); search_iter++);
             
             const rapidjson::Value& found = (*search_iter).value;
@@ -97,11 +142,15 @@ std::vector<std::string> clean(rapidjson::Document &lang){
             uint actual_str = perm_groups.size();
             // Permutate the original strings using the found replace values
             switch(found.GetType()){
+                /*  If the value found is a string, we must only update
+                    our current permutated regex with the found tag value */
                 case 5: // String
                     {
                     #ifdef DEBUG
                     std::cout << "Generated strings from string:" << std::endl;
                     #endif
+                    /*  For every current regex, add the tag value instead of the
+                        tag */
                     for(std::string &t : perm_groups){
                         t += found.GetString();
 
@@ -112,6 +161,13 @@ std::vector<std::string> clean(rapidjson::Document &lang){
                     }
                     
                     break;
+
+                /*  If the value found is an array, we must update
+                    our current permutated regex with the found tag values.
+                    The resulting vector size will be the original size osize
+                    times the json array size jasize ( osize * jasize )
+                    since all found tag values must be added to the permutated
+                    regexs */
                 case 4: // Array
                     {
                     #ifdef DEBUG
@@ -120,9 +176,13 @@ std::vector<std::string> clean(rapidjson::Document &lang){
 
                     std::cout << "Generated strings from array:" << std::endl;
                     #endif
+                    /*  For all values in the array, */
                     for(auto val_iter=found.GetArray().Begin();
                                 val_iter != found.GetArray().End(); ++val_iter){
+                        /*  For all the current regexs, */
                         for(const std::string t : perm_groups){
+                            /*  Concatenate them, and push them into a temporal vector
+                                (as to not modify the original one with the new regex) */
                             temp.emplace_back(std::string(t+val_iter->GetString()));
 
                             #ifdef DEBUG
@@ -131,13 +191,25 @@ std::vector<std::string> clean(rapidjson::Document &lang){
                         }
                     }
 
+                    /*  Once all regexs are permutated, replace the permutation groups
+                        with the new permutated regex */
                     perm_groups = temp;
+                    /*  And clear the temporal vector */
                     temp = std::vector<std::string>();
                     }
                     break;
+                /*  If the value found is an object, we must update
+                    our current permutated regex with the found tag values.
+                    The resulting vector size will be the original size osize
+                    times the number of leaves found in the patch described nleaves
+                    ( osize * nleaves )
+                    since all found tag values must be added to the permutated
+                    regexs, and the search in the JSON objects is done recursively */
                 case 3: // Object
                     {
                     start = std::queue<val_iterator>();
+                    /*  Just like when getting all standalones, we get the starting and last
+                        members of the current path, to iterate over them in a recursive search */
                     start.push(val_iterator{found.GetObject().MemberBegin(), found.GetObject().MemberEnd()});
                     std::queue<std::string> found_perm = rj_all_string_in_obj(start);
 
@@ -147,8 +219,12 @@ std::vector<std::string> clean(rapidjson::Document &lang){
 
                     std::cout << "Generated strings from object:" << std::endl;
                     #endif
+                    /*  For every string found in the path, */
                     while(!found_perm.empty()){
+                        /*  For every current regexs, */
                         for(std::string &t : perm_groups){
+                            /*  Concatenate them, and push them into a temporal vector
+                                (as to not modify the original one with the new regex) */
                             temp.push_back(t+found_perm.front());
 
                             #ifdef DEBUG
@@ -159,25 +235,36 @@ std::vector<std::string> clean(rapidjson::Document &lang){
                         found_perm.pop();
                     }
 
+                    /*  Once all regexs are permutated, replace the permutation groups
+                        with the new permutated regex */
                     perm_groups = temp;
+                    /*  And clear the temporal vector */
                     temp = std::vector<std::string>();
                     }
                     break;
                 default:
+                    /*  If the found type is invalid, print the error message
+                        I should really start writing down some asserts heh */
                     printf("WRONG TYPE FOUND %i\n", found.GetType());
             }
+            /*  Get the starting point of the non-computed substring */
             pos = matches.position() + matches.length();
             
-            if(pos >= modified.length()) {
-                modified = "";
+            /*  If there's no string left to be checked, break */
+            if(pos >= regex_sub.length()) {
+                regex_sub = "";
                 break;
             }
 
-            modified = modified.substr(pos);
+            /*  Since there was string left, get the substring, and check again
+                for any tag */
+            regex_sub = regex_sub.substr(pos);
         }
         
+        /*  If there was any char left in the regex, with no tags in it,
+            add it to the final permutated regex */
         for(std::string &t : perm_groups)
-            t += modified;
+            t += regex_sub;
 
         #ifdef DEBUG
         printf("###### CHECK #######");
@@ -187,9 +274,11 @@ std::vector<std::string> clean(rapidjson::Document &lang){
             #ifdef DEBUG
             std::cout << "? " << t << std::endl;
             #endif
-            // if %% in text
+            /*  If there are any tags left in the generated regex, 
+                push it to-be-computed again */
             if(regex_search(t, fm, REF_REG))
                 raw_regex.push(t);
+            /*  Otherwise, add it to the resulting regex */
             else
                 result.push_back(t);
         }
@@ -204,37 +293,89 @@ int main(){
     std::string language_str;
     std::fstream lang_file;
 
+    /*  Open the language JSON file as a fstream */
     lang_file.open("aucpp.json",std::ios::in);
     if (lang_file.is_open()){
+        /*  Start concatenating the lines found in the resulting string
+            "language_str". The '\0' parameter should make it get the entire
+            file all at once, but just in case, I keep it running in the while */
         while(getline(lang_file, line, '\0')){
             language_str += line;
         }
+        /*  Close the fstream */
         lang_file.close();
     } else 
         std::cout << "Fail on file reading" << std::endl;
 
+    /*  Define a Document for the JSON file to be parsed */
     rapidjson::Document lang;
+    /*  Parse the loaded string JSON file as a char* using rapidjson */
     lang.Parse(language_str.c_str());
     std::cout << (lang.HasParseError() ? "Fail on parse" : "File parse: ok") << std::endl;
+    /*  Clean and extract from the document all regex to be compiled by
+        the hyperscan library */
     std::vector<std::string> regexps = clean(lang);
 
+    /*  Since the hyperscan library is made in C, move all structs to pointers
+        First, we generate a vector containing all data with te correct format,
+        an later we will turn it into a pointer to pass it to hyperscan */
+    std::vector<const char*> regexps_char_vector = std::vector<const char*>{};
+    std::vector<uint> id_vector = std::vector<uint>{};
+
+    /*  Since the final size of the vector is known, better to reallocate once
+        than many times during the loop */
+    regexps_char_vector.reserve(regexps.size());
+    id_vector.reserve(regexps.size());
+
+    uint id = 0;
+
     printf("\n");
+    /*  For every permutated regex extracted earlier */
     for(std::vector<std::string>::const_iterator str_iter=regexps.cbegin(); 
                 str_iter != regexps.cend(); ++str_iter){
-        std::cout << *str_iter << std::endl;
-    }
-    //hs_compile();
+        /*  Turn the string into a const char* and push it to the vector */
+        regexps_char_vector.push_back((*str_iter).c_str());
+        /*  Add the proper index to the function. Right now I set the ids of
+            the regex to be in ascending order. Maybe later this can be changed
+            to set it to the resulting hash */
+        id_vector.push_back(id++);
 
+        #ifdef DEBUG
+        std::cout << *str_iter << std::endl;
+        #endif
+    }
+    
+    /*  Allocate the pointers of the sent data */
+    const char* const* regexps_array = &regexps_char_vector[0];
+    const unsigned int* regexps_id = &id_vector[0];
+
+    /*  Define the pointers to the output data of the function */
+    hs_database_t** database;
+    hs_compile_error_t** error;
+
+    // https://intel.github.io/hyperscan/dev-reference/api_files.html#c.hs_compile_multi
+    /*  Compile the generated regexs into a hyperscan database */
+    hs_compile_multi(regexps_array, NULL, regexps_id, regexps.size(), HS_MODE_BLOCK, NULL,
+                    database, error);
+
+    /*  If the database was originally generated, free it */
+    if(database != NULL)
+        hs_free_database(*database);
     return 0;
 }
 
+/*  Recursive search on a queue of iterators of members of a JSON object.
+    The search algorithm is Breadth-first */
 std::queue<std::string> rj_all_string_in_obj(std::queue<val_iterator> &remaining){
     std::queue<std::string> result = std::queue<std::string>();
 
+    /*  For every iterator got as an argment, */
     while(!remaining.empty()){
         #ifdef DEBUG
         printf("###\n");
         #endif
+        /*  Iterate recursivelly over them from start to end, extracting all strings
+            in the selected range */
         for (rapidjson::Value::ConstMemberIterator memb_iter = remaining.front().first;
                     memb_iter != remaining.front().second; ++memb_iter)
         {
@@ -242,6 +383,8 @@ std::queue<std::string> rj_all_string_in_obj(std::queue<val_iterator> &remaining
             printf("Found Member %s", memb_iter->name.GetString());
             #endif
             switch(memb_iter->value.GetType()){
+                /*  If the found member is an object, get the first and last member
+                    that it contains, and add them to the to-be-searched queue */
                 case 3: // Object
                     #ifdef DEBUG
                     printf(" (object)\n");
@@ -250,16 +393,21 @@ std::queue<std::string> rj_all_string_in_obj(std::queue<val_iterator> &remaining
                             memb_iter->value.GetObject().MemberBegin(),
                             memb_iter->value.GetObject().MemberEnd()});
                     continue;
+                /*  If the found member is an array, iterate over it, extracting all
+                    strings that it contains into the resulting queue */
                 case 4: // Array
                     #ifdef DEBUG
                     printf(" (array)\n");
                     #endif
                     
+                    /*  For every string in the array, */
                     for(auto val_iter=memb_iter->value.GetArray().Begin();
                                 val_iter != memb_iter->value.GetArray().End(); ++val_iter){
+                        /*  Add it to the result queue */
                         result.push(val_iter->GetString());
                     }
                     continue;
+                /*  If the found member is a string, just add it to the result */
                 case 5: // string
                     #ifdef DEBUG
                     printf(" (string)\n");
@@ -267,11 +415,13 @@ std::queue<std::string> rj_all_string_in_obj(std::queue<val_iterator> &remaining
                     result.push(memb_iter->value.GetString());
             }
         }
+        /*  Since the iteration has finished, remove the work from the queue */
         remaining.pop();
     }
     #ifdef DEBUG
     printf("\n");
     #endif
 
+    /*  Return the found results */
     return result;
 }
