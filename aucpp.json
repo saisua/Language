@@ -1,0 +1,64 @@
+{
+    "type" : {
+        "integer":"int",
+        "character":"char",
+        "string":"str",
+        "boolean":"bool",
+        "float":"float",
+        "double":"double"
+    },
+
+    "bool":{
+        "primitive":[
+            "true",
+            "false"
+        ],
+        "negation":"not",
+        "Boolean":[
+            "(%bool_negation%)?\\s*(\\w+)",
+            "(%bool_negation%)?\\s*(\\w+)\\s*%bool_operation%\\s*(\\w+)",
+            "(%bool_negation%)?\\s*(\\w+)\\s*%bool_operation_strict%\\s*(%bool_primitive%)"
+        ],
+        "operation":{
+            "strict":{
+                "and":"and",
+                "or":"or",
+                "xor":"xor",
+                "equals":"==",
+                "not equals":"!=",
+                "same":"is",
+                "not same":"is not"
+            },
+            "less than":"<",
+            "more than":">",
+            "less or equal than":"<=",
+            "more or equal than":">="
+        }
+    },
+    
+    "struct":{
+        "start":[
+            ":",
+            "{"
+        ],
+        "pattern":{
+            ":":"+\\t",
+            "{":"$}"
+        }
+    },
+
+    "line":{
+        "end":[";", "\\n"]
+    },
+    
+    "standalones":{
+        "if":[
+            "if\\s+%bool_Boolean%\\s*%struct_start%",
+            "if\\s*\\(\\s*%bool_Boolean%\\s*\\)\\s*%struct_start%"
+        ],
+        "while":[
+            "while\\s+%bool_Boolean%\\s*%struct_start%",
+            "while\\s*\\(\\s*%bool_Boolean%\\s*\\)\\s*%struct_start%"
+        ]
+    }
+}
