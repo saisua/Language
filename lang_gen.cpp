@@ -6,12 +6,12 @@
 #include <vector>
 #include <queue>
 #include <algorithm>
-
-// Local includes
-#include "hyperscan/config.h"
-#include "hyperscan/src/hs.h"
+#include <stdexcept>
+#include <unordered_map>
+#include <chrono>
 
 // External includes
+#include <hyperscan/src/hs.h>
 #include <rapidjson/document.h>
 #include <omp.h>
 
@@ -22,15 +22,28 @@ using val_iterator = std::pair<rapidjson::Value::ConstMemberIterator,rapidjson::
 std::queue<std::string> rj_all_string_in_obj(std::queue<val_iterator>&remaining);
 
 // global compiler time settings
-//#define DEBUG false
+//#define DEBUG
+#define TIMEIT
 
 /*  
+    TODO: replace string duplication with or-s. String duplication
+    will not work with multiple instances of a recursively infinite
+    sub-match. Per example:
+    if(a and b or c):
+    should work by using %bool%* but it does not right now.
+    It also would improve overall RAM usage and allow us to use a
+    pre-declared array as a return value.
+    As stated in the hyperscan library, this will not affect performance
+    of the search
+
     IMPORTANT: ASSUME ALL VALUES IN JSON ARE STRING
 
-    This function takes the generated jsonfile::Document& 
+    This function takes the generated rapidjson::Document& 
     and returns a vector containing all permutations of
     the standalones ready-to-be-compiled. The function assumes
-    all data in the .json provided is right 
+    all data in the .json provided is right,
+    As an optimization, in the future this function may return
+    a pair<const char* const*, const size_t>
 */
 std::vector<std::string> clean(rapidjson::Document &lang){
     std::queue<val_iterator> start = std::queue<val_iterator>();
@@ -267,7 +280,7 @@ std::vector<std::string> clean(rapidjson::Document &lang){
             t += regex_sub;
 
         #ifdef DEBUG
-        printf("###### CHECK #######");
+        printf("###### CHECK #######\n");
         #endif
         // Really slow, should parallelize
         for(std::string &t : perm_groups){
@@ -288,10 +301,24 @@ std::vector<std::string> clean(rapidjson::Document &lang){
     return result;
 }
 
+static int onMatch(unsigned int id, unsigned long long from,
+                        unsigned long long to, unsigned int flags, void *data) {
+    #ifdef DEBUG
+    printf("\tMatch for pattern %i : %s\n", 
+            id, 
+            (*(std::unordered_map<uint, const char*>*)data)[id]);
+    #endif
+    return 0;
+}
+
 int main(){
     std::string line;
     std::string language_str;
     std::fstream lang_file;
+
+    #ifdef TIMEIT
+    auto begin = std::chrono::high_resolution_clock::now();
+    #endif
 
     /*  Open the language JSON file as a fstream */
     lang_file.open("aucpp.json",std::ios::in);
@@ -305,22 +332,47 @@ int main(){
         /*  Close the fstream */
         lang_file.close();
     } else 
-        std::cout << "Fail on file reading" << std::endl;
+        throw std::runtime_error("Fail on file reading");
 
+    #ifdef TIMEIT
+    auto end = std::chrono::high_resolution_clock::now();
+
+    long int file_read = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    begin = std::chrono::high_resolution_clock::now();
+    #endif
+    
     /*  Define a Document for the JSON file to be parsed */
     rapidjson::Document lang;
     /*  Parse the loaded string JSON file as a char* using rapidjson */
     lang.Parse(language_str.c_str());
-    std::cout << (lang.HasParseError() ? "Fail on parse" : "File parse: ok") << std::endl;
+    
+    if(lang.HasParseError())
+        throw std::runtime_error("Error while parsing the json file. Check it and retry.");
+
+    #ifdef TIMEIT
+    end = std::chrono::high_resolution_clock::now();
+
+    long int json_parse = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    begin = std::chrono::high_resolution_clock::now();
+    #endif
+    
     /*  Clean and extract from the document all regex to be compiled by
         the hyperscan library */
     std::vector<std::string> regexps = clean(lang);
+
+    #ifdef TIMEIT
+    end = std::chrono::high_resolution_clock::now();
+
+    long int regex_extract = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    begin = std::chrono::high_resolution_clock::now();
+    #endif
 
     /*  Since the hyperscan library is made in C, move all structs to pointers
         First, we generate a vector containing all data with te correct format,
         an later we will turn it into a pointer to pass it to hyperscan */
     std::vector<const char*> regexps_char_vector = std::vector<const char*>{};
     std::vector<uint> id_vector = std::vector<uint>{};
+    std::unordered_map<uint, const char*> reg_data = std::unordered_map<uint, const char*>();
 
     /*  Since the final size of the vector is known, better to reallocate once
         than many times during the loop */
@@ -329,7 +381,9 @@ int main(){
 
     uint id = 0;
 
-    printf("\n");
+    #ifdef DEBUG
+    printf("\n\n+++++++ RESULT +++++++\n");
+    #endif
     /*  For every permutated regex extracted earlier */
     for(std::vector<std::string>::const_iterator str_iter=regexps.cbegin(); 
                 str_iter != regexps.cend(); ++str_iter){
@@ -338,29 +392,127 @@ int main(){
         /*  Add the proper index to the function. Right now I set the ids of
             the regex to be in ascending order. Maybe later this can be changed
             to set it to the resulting hash */
-        id_vector.push_back(id++);
+        id_vector.push_back(++id);
+
+        reg_data[id] = (*str_iter).c_str();
 
         #ifdef DEBUG
-        std::cout << *str_iter << std::endl;
+        std::cout << id << ": " << *str_iter << std::endl;
         #endif
     }
-    
+    #ifdef DEBUG
+    printf("\n\n");
+    #endif
+
     /*  Allocate the pointers of the sent data */
     const char* const* regexps_array = &regexps_char_vector[0];
     const unsigned int* regexps_id = &id_vector[0];
 
     /*  Define the pointers to the output data of the function */
-    hs_database_t** database;
-    hs_compile_error_t** error;
+    hs_database_t* database;
+    hs_compile_error_t* error;
+    /*  must be initialized to null, otherwise it will not work */
+    hs_scratch_t* scratch = NULL;
 
+    #ifdef TIMEIT
+    begin = std::chrono::high_resolution_clock::now();
+    #endif
+
+    // In the future, once tested and everything we may want to change the mode to
+    // vector mode to operate on different lines of code
     // https://intel.github.io/hyperscan/dev-reference/api_files.html#c.hs_compile_multi
     /*  Compile the generated regexs into a hyperscan database */
-    hs_compile_multi(regexps_array, NULL, regexps_id, regexps.size(), HS_MODE_BLOCK, NULL,
-                    database, error);
+    if(hs_compile_multi(regexps_array, NULL, regexps_id, regexps.size(), HS_MODE_BLOCK, NULL,
+                    &database, &error)  != HS_SUCCESS){
+        fprintf(stderr, "ERROR: Unable to compile patterns: %s\n", error->message);
+        hs_free_compile_error(error);
+        return -1;
+    }
+    /*  Allocate a scratch (Must per concurrent thread/process) */
+    if (hs_alloc_scratch(database, &scratch) != HS_SUCCESS) {
+        fprintf(stderr, "ERROR: Unable to allocate scratch space. Exiting.\n");
+        hs_free_database(database);
+        return -1;
+    }
 
-    /*  If the database was originally generated, free it */
-    if(database != NULL)
-        hs_free_database(*database);
+    #ifdef TIMEIT
+    end = std::chrono::high_resolution_clock::now();
+
+    long int HS_compilation = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+    begin = std::chrono::high_resolution_clock::now();
+    #endif
+
+    // Test data
+    std::vector<std::string> test {
+        "if(var1>10):",
+        "if  (  var1  > 10  and 3<40):",
+        "if  (  var1  > 10  and var2 == var3 and 3<40  )  :",
+
+        "if var1>10:",
+        "if    var1  > 10  and 3<40:",
+        "if    var1  > 10  and var2 == var3 and 3<40   :",
+
+        "while(var1>10):",
+        "while  (  var1  > 10  and 3<40):",
+        "while  (  var1  > 10  and var2 == var3 and 3<40  )   :",
+
+        "while var1>10:",
+        "while    var1  > 10  and 3<40:",
+        "while   var1  > 10  and var2 == var3   and    3<40    :",
+
+        "a    =     10",
+        "a=19",
+
+        "int   a   =  10",
+        "int a=19",
+
+        "const    int    a   = 123",
+        "const int a=124"
+    };
+
+    #ifdef TIMEIT
+    begin = std::chrono::high_resolution_clock::now();
+    #endif
+
+    /*  This is not the best but allows me to print each scan the test data
+        without passing on a void* containing a std::pair */
+    for(std::string t : test){
+        #ifdef DEBUG
+        printf("\n%s\nStart scan:\n", t.c_str());
+        #endif
+
+        // onEvent: https://intel.github.io/hyperscan/dev-reference/api_files.html#c.match_event_handler
+        // https://intel.github.io/hyperscan/dev-reference/api_files.html#c.hs_scan
+        if (hs_scan(database, t.c_str(), t.length(), 0, scratch, onMatch, &reg_data) 
+                    != HS_SUCCESS) {
+            fprintf(stderr, "ERROR: Unable to scan %s. Exiting.\n", t.c_str());
+            hs_free_scratch(scratch);
+            hs_free_database(database);
+            return -1;
+        }
+    }
+
+    #ifdef TIMEIT
+    end = std::chrono::high_resolution_clock::now();
+
+    printf("\n\n");
+    std::cout << "+ Timings:" << std::flush;
+    #ifndef DEBUG
+    std::cout << "(prints disabled)" << std::flush;
+    #endif
+    std::cout << std::endl;
+    std::cout << "\tFile reading time: " << file_read << "ns" << std::endl;
+    std::cout << "\tJSON parsing time: " << json_parse << "ns" << std::endl;
+    std::cout << "\tRegex extraction time: " << regex_extract << "ns" << std::endl;
+    std::cout << "\tHS database compilation time (" << regexps.size() << " regex):" << HS_compilation << "ns" << std::endl;
+    std::cout << "\tRegex matching time (" << test.size() << " tests): " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count() << "ns" << std::endl;
+    std::cout << "\tRegex matching time (avg): " << std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count()/test.size() << "ns" << std::endl;
+    #endif
+
+    /*  If the variables were originally generated, free them */
+    hs_free_scratch(scratch);
+    hs_free_database(database);
+
     return 0;
 }
 

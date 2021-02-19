@@ -1,1 +1,1 @@
-gcc -std=c++20 -lstdc++ -L./hyperscan/src/ -ffast-math -march=native -O3 lang_gen.cpp
+gcc -std=c++20 -lstdc++ -ffast-math -march=native -O3 lang_gen.cpp -lhs

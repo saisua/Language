@@ -1,4 +1,15 @@
 {
+    "_comment_compilerTag1":"The tags the compiler will use to mark every line/struct",
+    "_comment_compilerTag2":"to add functionality/restrictions/optimizations",
+    "compilerTag":[
+        "immutable",
+        "const",
+        "final",
+        "local\\s+\\d*"
+    ],
+
+    "var":"[A-Za-z][\\w\\d]*?",
+
     "type" : {
         "integer":"int",
         "character":"char",
@@ -13,11 +24,14 @@
             "true",
             "false"
         ],
-        "negation":"not",
-        "Boolean":[
-            "(%bool_negation%)?\\s*(\\w+)",
-            "(%bool_negation%)?\\s*(\\w+)\\s*%bool_operation%\\s*(\\w+)",
-            "(%bool_negation%)?\\s*(\\w+)\\s*%bool_operation_strict%\\s*(%bool_primitive%)"
+        "negation":"not\\s",
+        "LBoolean":[
+            "(%bool_negation%)?\\s*(%var%)",
+            "(%bool_negation%)?\\s*\\d+"
+        ],
+        "RBoolean":[
+            "\\s*%bool_operation%\\s*%bool_LBoolean%\\s*",
+            "\\s*%bool_operation_strict%\\s*%bool_primitive%\\s*"
         ],
         "operation":{
             "strict":{
@@ -36,29 +50,51 @@
         }
     },
     
+    "_comment_struct1":"To define structures. The compiler will recognize a structure has started",
+    "_comment_struct2":"when it sees one struct_start. Then, it will check every line with de data",
+    "_comment_struct3":"in pattern. For each start, must respect every start or end of line in it",
+    "_comment_struct4":"and keep the structure until the end of the struct. Overrides general per",
+    "_comment_struct5":"line restrictions",
     "struct":{
         "start":[
             ":",
             "{"
         ],
         "pattern":{
-            ":":"+\\t",
-            "{":"$}"
+            ":":{
+                "startLine":"\\t"
+            },
+            "{":{
+                "endStruct":"}"
+            }
         }
     },
 
+    "_comment_line":"What every line must have, either at the beginning or the end of it",
     "line":{
         "end":[";", "\\n"]
     },
     
+    "_comment_standalones":"Standalones are the general instructions that will start on every newline.",
     "standalones":{
         "if":[
-            "if\\s+%bool_Boolean%\\s*%struct_start%",
-            "if\\s*\\(\\s*%bool_Boolean%\\s*\\)\\s*%struct_start%"
+            "if\\s+%bool_LBoolean%\\s*%struct_start%",
+            "if\\s*\\(\\s*%bool_LBoolean%\\s*\\)\\s*%struct_start%",
+            "if\\s+%bool_LBoolean%(%bool_RBoolean%)+\\s*%struct_start%",
+            "if\\s*\\(\\s*%bool_LBoolean%(%bool_RBoolean%)+\\s*\\)\\s*%struct_start%"
         ],
         "while":[
-            "while\\s+%bool_Boolean%\\s*%struct_start%",
-            "while\\s*\\(\\s*%bool_Boolean%\\s*\\)\\s*%struct_start%"
+            "while\\s+%bool_LBoolean%\\s*%struct_start%",
+            "while\\s*\\(\\s*%bool_LBoolean%\\s*\\)\\s*%struct_start%",
+            "while\\s+%bool_LBoolean%(%bool_RBoolean%)+\\s*%struct_start%",
+            "while\\s*\\(\\s*%bool_LBoolean%(%bool_RBoolean%)+\\s*\\)\\s*%struct_start%"
+        ],
+        "varDefinition":[
+            "(%var%)\\s*=\\s*.+",
+            "(%type%)\\s+(%var%)\\s*=\\s*.+",
+            "(\\w+)\\s+(%var%)\\s*=\\s*.+",
+            "(%compilerTag%\\s+)+(%type%)\\s+(%var%)\\s*=\\s*.+",
+            "(%compilerTag%\\s+)+(\\w+)\\s+(%var%)\\s*=\\s*.+"
         ]
     }
 }
