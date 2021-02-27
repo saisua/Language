@@ -100,10 +100,10 @@ Start scan:<br>
 &emsp;...<br>
 <br>
 + Timings:(prints disabled)<br>
-&emsp;File reading time: Depends of language file sizes
-&emsp;JSON parsing time: Depends of language file sizes
-&emsp;Regex extraction time: 1905308ns
-&emsp;HS database compilation time (n regex): 1203183ns
-&emsp;Regex matching time (18 tests): 35210ns
-&emsp;Regex matching time (avg): 1956ns
+&emsp;File reading time: Depends of language file sizes<br>
+&emsp;JSON parsing time: Depends of language file sizes<br>
+&emsp;Regex extraction time: 1905308ns<br>
+&emsp;HS database compilation time (n regex): 1203183ns<br>
+&emsp;Regex matching time (18 tests): 35210ns<br>
+&emsp;Regex matching time (avg): 1956ns<br>
 <hr>
