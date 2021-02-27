@@ -9,7 +9,6 @@ Requires a local compilation of intel <a href="https://github.com/intel/hypersca
 Results: (timings in the end)
 <br>
 <br>
-<code>
 if(var1&gt;10):
 Start scan:
 	Match for pattern 377 : if\s*\(\s*(not\s)?\s*([A-Za-z][\w\d]*?)(\s*&gt;\s*(not\s)?\s*\d+\s*)+\s*\)\s*:
@@ -106,4 +105,3 @@ Start scan:
 	HS database compilation time (n regex): 1203183ns
 	Regex matching time (18 tests): 35210ns
 	Regex matching time (avg): 1956ns
-</code>
