@@ -1,0 +1,56 @@
+if(   40219):
+if(var1>10):
+if  (  var1  > 10  and 3<40):
+if  (  var1  > 10  and var2 == var3 or 3<40  )  :
+if(  not   40219):
+if(not var1>10):
+if  ( not  var1  > 10  and 3<not 40):
+if  (  var1  > 10  and (not (var2 == var3)) or 3<40  )  :
+
+if  var123 :
+if   var1>10:
+if    var1  > 10  and 3<40:
+if    var1  > 10  and var2 == var3 or 3<40   :
+if  not   var123 :
+if   not var1>10:
+if    var1  > 10  and not 3<40:
+if    var1  > not 10  and (  var2 == var3 or 3<not 40  )   :
+
+while(   41829):
+while(var1>10):
+while  (  var1  > 10  and 3<40):
+while  (  var1  > 10  and var2 == var3 or 3<40  )   :
+while(   not   41829):
+while(not var1>10):
+while  (  not  var1  > 10  and not 3<40):
+while  (  var1  >  not 10  and var2 == var3 or 3<not 40  )   :
+
+while  var3:
+while var1>10:
+while    var1  > 10  and 3<40:
+while   var1  > 10  and var2 == var3   or    3<40    :
+while  not   var3:
+while not var1>10:
+while  not  var1  > 10  and not 3<40:
+while   var1  >  not 10  and var2 == var3   or    3<not 40    :
+
+a    =     b;
+a    =     10;
+a=19;
+a   = not c;
+a  =  function();
+
+int   a   =  b;
+int   a   =  10;
+int a=19;
+int  a   =   not   c;
+int    a  =  function();
+
+const    int    a   = b;
+const    int    a   = 123;
+const int a=   not  c;
+const int a=    function ();
+
+const    final   int    a   = 123;
+const    final   int    a   =not c;
+const    final   int    a   =function();

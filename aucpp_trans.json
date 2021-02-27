@@ -1,0 +1,20 @@
+{
+    "__Tag__":{
+        "LocalScope":"(?=[^\\\\]|^)$$(.*?[^\\\\])$",
+        "LocalN":"(?=[^\\\\]|^)$\\d+$(.*?[^\\\\])$",
+        "File":"(?=[^\\\\]|^)$f$(.*?[^\\\\])$",
+        "Global":"(?=[^\\\\]|^)$g$(.*?[^\\\\])$"
+    },
+
+
+    "_comment_futur1":"Bridge to asm, add user-defined compiler tags,",
+    "_comment_futur2":"call to defined functions (import, ...),",
+    "_comment_futur3":"decide when to call the during-compilation interpreter",
+    "_comment_futur4":"check if attr is a final (str:'', int:\\d, ...)",
+
+    "standalones":{
+        "if":{
+            
+        }
+    }
+}
