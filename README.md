@@ -9,99 +9,101 @@ Requires a local compilation of intel <a href="https://github.com/intel/hypersca
 Results: (timings in the end)
 <br>
 <br>
-if(var1&gt;10):
-Start scan:
-	Match for pattern 377 : if\s*\(\s*(not\s)?\s*([A-Za-z][\w\d]*?)(\s*&gt;\s*(not\s)?\s*\d+\s*)+\s*\)\s*:
+<hr>
+if(var1&gt;10):<br>
+Start scan:<br>
+&emsp;Match for pattern 377 : if\s*\(\s*(not\s)?\s*([A-Za-z][\w\d]*?)(\s*&gt;\s*(not\s)?\s*\d+\s*)+\s*\)\s*:<br>
 <br>
-(Not working yet, known bug)
-if  (  var1  &gt; 10  and 3&lt;40):
-Start scan:
+(Not working yet, known bug)<br>
+if  (  var1  &gt; 10  and 3&lt;40):<br>
+Start scan:<br>
 <br>
-(Not working yet, known bug)
-if  (  var1  &gt; 10  and var2 == var3 and 3&lt;40  )  :
-Start scan:
-	Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+
-	Match for pattern 8 : (\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
+(Not working yet, known bug)<br>
+if  (  var1  &gt; 10  and var2 == var3 and 3&lt;40  )  :<br>
+Start scan:<br>
+&emsp;Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+<br>
+&emsp;Match for pattern 8 : (\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
 <br>
-if var1&gt;10:
-Start scan:
-	Match for pattern 289 : if\s+(not\s)?\s*([A-Za-z][\w\d]*?)(\s*&gt;\s*(not\s)?\s*\d+\s*)+\s*:
+if var1&gt;10:<br>
+Start scan:<br>
+&emsp;Match for pattern 289 : if\s+(not\s)?\s*([A-Za-z][\w\d]*?)(\s*&gt;\s*(not\s)?\s*\d+\s*)+\s*:<br>
 <br>
-(Not working yet, known bug)
-if    var1  &gt; 10  and 3&lt;40:
-Start scan:
+(Not working yet, known bug)<br>
+if    var1  &gt; 10  and 3&lt;40:<br>
+Start scan:<br>
 <br>
-(Not working yet, known bug)
-if    var1  &gt; 10  and var2 == var3 and 3&lt;40   :
-Start scan:
-	Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+
-	Match for pattern 8 : (\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
+(Not working yet, known bug)<br>
+if    var1  &gt; 10  and var2 == var3 and 3&lt;40   :<br>
+Start scan:<br>
+&emsp;Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+<br>
+&emsp;Match for pattern 8 : (\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
 <br>
-while(var1&gt;10):
-Start scan:
-	Match for pattern 553 : while\s*\(\s*(not\s)?\s*([A-Za-z][\w\d]*?)(\s*&gt;\s*(not\s)?\s*\d+\s*)+\s*\)\s*:
+while(var1&gt;10):<br>
+Start scan:<br>
+&emsp;Match for pattern 553 : while\s*\(\s*(not\s)?\s*([A-Za-z][\w\d]*?)(\s*&gt;\s*(not\s)?\s*\d+\s*)+\s*\)\s*:<br>
 <br>
-(Not working yet, known bug)
-while  (  var1  &gt; 10  and 3&lt;40):
-Start scan:
+(Not working yet, known bug)<br>
+while  (  var1  &gt; 10  and 3&lt;40):<br>
+Start scan:<br>
 <br>
-(Not working yet, known bug)
-while  (  var1  &gt; 10  and var2 == var3 and 3&lt;40  )   :
-Start scan:
-	Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+
-	Match for pattern 8 : (\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
+(Not working yet, known bug)<br>
+while  (  var1  &gt; 10  and var2 == var3 and 3&lt;40  )   :<br>
+Start scan:<br>
+&emsp;Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+<br>
+&emsp;Match for pattern 8 : (\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
 <br>
-while var1&gt;10:
-Start scan:
-	Match for pattern 465 : while\s+(not\s)?\s*([A-Za-z][\w\d]*?)(\s*&gt;\s*(not\s)?\s*\d+\s*)+\s*:
+while var1&gt;10:<br>
+Start scan:<br>
+&emsp;Match for pattern 465 : while\s+(not\s)?\s*([A-Za-z][\w\d]*?)(\s*&gt;\s*(not\s)?\s*\d+\s*)+\s*:<br>
 <br>
-(Not working yet, known bug)
-while    var1  &gt; 10  and 3&lt;40:
-Start scan:
+(Not working yet, known bug)<br>
+while    var1  &gt; 10  and 3&lt;40:<br>
+Start scan:<br>
 <br>
-(Not working yet, known bug)
-while   var1  &gt; 10  and var2 == var3   and    3&lt;40    :
-Start scan:
-	Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+
-	Match for pattern 8 : (\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
+(Not working yet, known bug)<br>
+while   var1  &gt; 10  and var2 == var3   and    3&lt;40    :<br>
+Start scan:<br>
+&emsp;Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+<br>
+&emsp;Match for pattern 8 : (\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
 <br>
-a    =     10
-Start scan:
-	Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+
+a    =     10<br>
+Start scan:<br>
+&emsp;Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+<br>
 <br>
-a=19
-Start scan:
-	Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+
+a=19<br>
+Start scan:<br>
+&emsp;Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+<br>
 <br>
-int   a   =  10
-Start scan:
-	*Match for pattern 2 : (int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
-	Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+
-	Match for pattern 8 : (\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
+int   a   =  10<br>
+Start scan:<br>
+&emsp;*Match for pattern 2 : (int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
+&emsp;Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+<br>
+&emsp;Match for pattern 8 : (\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
 <br>
-int a=19
-Start scan:
-	*Match for pattern 2 : (int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
-	Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+
-	Match for pattern 8 : (\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
+int a=19<br>
+Start scan:<br>
+&emsp;*Match for pattern 2 : (int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
+&emsp;Match for pattern 1 : ([A-Za-z][\w\d]*?)\s*=\s*.+<br>
+&emsp;Match for pattern 8 : (\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
 <br>
-const    int    a   = 123
-Start scan:
-	Match for pattern 34 : (const\s+)+(\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
-	*Match for pattern 10 : (const\s+)+(int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
-	Match for pattern 2 : (int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
+const    int    a   = 123<br>
+Start scan:<br>
+&emsp;Match for pattern 34 : (const\s+)+(\w+)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
+&emsp;*Match for pattern 10 : (const\s+)+(int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
+&emsp;Match for pattern 2 : (int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
 <br>
-const int a=124
-Start scan:
-	Match for pattern 34 : (const\s+)+(\w+)\s+([A-Za-z][\w\d]?)\s*=\s*.+
-	*Match for pattern 10 : (const\s+)+(int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
-	Match for pattern 2 : (int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+
-    ...
+const int a=124<br>
+Start scan:<br>
+&emsp;Match for pattern 34 : (const\s+)+(\w+)\s+([A-Za-z][\w\d]?)\s*=\s*.+<br>
+&emsp;*Match for pattern 10 : (const\s+)+(int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
+&emsp;Match for pattern 2 : (int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
+&emsp;...<br>
 <br>
-+ Timings:(prints disabled)
-	File reading time: Depends of language file sizes
-	JSON parsing time: Depends of language file sizes
-	Regex extraction time: 1905308ns
-	HS database compilation time (n regex): 1203183ns
-	Regex matching time (18 tests): 35210ns
-	Regex matching time (avg): 1956ns
++ Timings:(prints disabled)<br>
+&emsp;File reading time: Depends of language file sizes
+&emsp;JSON parsing time: Depends of language file sizes
+&emsp;Regex extraction time: 1905308ns
+&emsp;HS database compilation time (n regex): 1203183ns
+&emsp;Regex matching time (18 tests): 35210ns
+&emsp;Regex matching time (avg): 1956ns
+<hr>
