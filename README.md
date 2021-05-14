@@ -1,6 +1,8 @@
 # Language
 A concept of a language compiler generator based of json instruction files
 <br>
+Right now on hold due to testing on performance hyperscan against my own <a href="https://github.com/saisua/FR-B-Tree">FR-B-Tree</a> data structure and regex matching tool.
+<br>
 Requires a local compilation of intel <a href="https://github.com/intel/hyperscan">hyperscan</a>*
 <br>
 <br>
