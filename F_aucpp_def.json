@@ -1,0 +1,64 @@
+{
+    "Reserved-regex":{
+        "Tag":"(?=[^\\\\]|^)#(.*?((?=[^\\\\])#)|\\[\\d+\\]#)"
+    },
+
+    
+    "_futur_comment1":"What to do with unkown data (a = .+?)",
+    "_futur_comment2":"Could be sent to translation to extract any",
+    "_futur_comment3":"compiler / final data (type pex) or sent to",
+    "_futur_comment4":"syntax again to check if matches anything",
+
+    "_sub_comment1":"In case a sub-compilation of bool is needed, the compiler will",
+    "_sub_comment2":"start matching the sub regex to the input, creating instances of",
+    "_sub_comment3":"#bool# in the process",
+    "sub-bool": "%bool_Boolean%",
+    "bool":{
+        "data-1":{
+            "groups":0
+        },
+        "operation":{
+            "groups":1
+        },
+        "data-2":{
+            "groups":2
+        }
+    },
+
+    "standalones":{
+        "if" : {
+            "boolean" : {
+                "groups":0,
+                "sub-compile": "#bool#"
+            },
+            "struct" : {
+                "groups": 1
+            }
+        },
+
+        "while" : {
+            "boolean" : {
+                "groups":0,
+                "sub-compile": "#bool#"
+            },
+            "struct" : {
+                "groups": 1
+            }
+        },
+
+        "varDefinition":{
+            "CompilerTags":{
+                "groups":0
+            },
+            "type":{
+                "groups":1
+            },
+            "varname":{
+                "groups":2
+            },
+            "data":{
+                "groups":3
+            }
+        }
+    }
+}

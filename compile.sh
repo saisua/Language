@@ -1,1 +1,1 @@
-gcc -std=c++20 -lstdc++ -ffast-math -march=native -O3 lang_gen.cpp -lhs
+gcc -std=c++20 -ffast-math -march=native -O3 main.cpp -lhs -ltre -lstdc++ 

@@ -1,0 +1,63 @@
+type:
+	int
+	str
+	bool
+	float
+	double
+	char
+
+Boolean primitive:
+	true
+	false
+
+Boolean concatenation:
+	and
+	or
+	xor
+	nand
+
+if/while:
+	(if)\(%Boolean%\)\s*[:\{]
+	(while)\(%Boolean%\)\s*[:\{]
+
+Boolean:
+	((not)?\s*(((\w+)\s*(((\=\=)|([\!|\<|\>]\=?))|(\s+is\s+))\s*(\w+))|((True)|(False)))(\s+(or|and)\s+)?)+?
+	Falta object contains operator bool or is_literal
+
+Assignation:	
+	(%tag%\s+)*(%type%\s+)?(\w+)\s*=\s*(.+)
+	# (\w+\s+)*?(\w+\s+)?(\w+)\s*=\s*(.+)
+	\s+with\s+\w+\s+as\s+.+?\{
+
+Array-like access:
+	(\w+)(\s*\[\s*((\w+)\s*\[\s*)*?(\w+)(\s*\]\s*)+)
+
+Function declaration:
+	(\w+\n*\s+)*\s*def\s+(\w*?)\(((.+?(:{1,2}\w+?)?)?(,.+?(:{1,2}\w+?)?)*)\)\s*?(->>?\s*(\w+?[\*\&]*)\s*)?[:\{]
+
+Class declaration:
+	(\w+\s+)*class\s+(\w+)\s*(\((\s*(\w+)(\s*\,\s*(\w+))*\s*)?\))?\s*[:\{]
+
+For:
+	for\s*\(\s*(%Assignation%)(\s*,\s*%Assignation%)+\s*;\s*(Boolean)\s*;\s*(.*)\s*\)\s*[:\{]
+
+For each:
+	for\s*\(\s*.+?\s+?in\s+?.+\)\s*[:\{]
+
+Obj attr access:
+	\w+\.(\w+)
+
+Pointer attr access:
+	\w+->(\w+)
+
+Compiler's result:
+	\/\/+.*
+
+Comment:
+	\#\s+.*
+
+Msg to compiler:
+	\#([^\s].*)
+
+Imports:
+	(from\s+(\w+(\.\w+)*)\s+)?import\s+(\w+(\.\w+)*)(\s+as\s+\w+)?
