@@ -1,0 +1,93 @@
+{
+    "Reserved-regex":{
+        "Tag":"(?=[^\\\\]|^)~(.*?((?=[^\\\\])~)|\\[\\d+\\]~)",
+        "Call":"(?=[^\\\\]|^)\\[(.*?)(\\|.*?){0,2}(?=[^\\\\])\\]",
+        "Upper-call":"(?=[^\\\\]|^)\\((.*?)(((?=[^\\\\])\\))|(\\|(.*?)(?=[^\\\\])\\)))",
+        "Variable":"(?=[^\\\\]|^)@(.*?((?=[^\\\\])@)|\\[\\d+\\]@)",
+        "Arguments":"(?=[^\\\\]|^){(\\w+)}"
+    },
+
+    "line":{
+        "end":"\\n",
+        "var-strategy":"use as many"
+    },
+
+    "__comment1":"Think some way to call sub-lines",
+    "__comment2":"In case of being able to use a register/variable",
+    "__comment3":"twice, (pex addi $1, $1, 1), it *must* be done that",
+    "__comment4":"way, and the compiler would choose based on an algorithm",
+    "__comment5":"wether or not choose another reg/var",
+    "__comment6":"If the code does not depend on any external reg/var",
+    "__comment7":"It should be calculated at compile time, or optimized.",
+
+    "__comment8":"To visualize it better, I keep it as the string representation",
+    "__comment9":"of the instructions. If this become 'official', it should be",
+    "__comment10":"the hex representation, to improve on copy performance",
+
+    "mask":{
+        "last-bit":[
+            "addi @reg[1]@, $zero, -1",
+            "srl @reg[1]@, @reg[1]@, 1",
+            "[bool_strict_not|{result}|@reg[1]@]"
+        ]
+    },
+
+    "bool":{
+        "strict":{
+            "not":"not {result}, {arg1}",
+            "and":"and {result}, {arg1}, {arg2}",
+            "or":"or {result}, {arg1}, {arg2}",
+            "xor":"xor {result}, {arg1}, {arg2}",
+            "same":[
+                "[bool_strict_xor|@reg[0]@|{arg1}, {arg2}]",
+                "[bool_strict_not|{result}|@reg[0]@]"
+            ],
+            "not same":"[bool_strict_xor|{result}|{arg1}, {arg2}]"
+        },
+        "less than":[
+            "sub @reg[0]@, {arg1}, {arg2}",
+            "[mask_last-bit|{@reg[1]@}]",
+            "[bool_strict_and|{result}|@reg[0]@, @reg[1]@]"
+        ],
+        "greater than":[
+            "sub @reg[0]@, {arg1}, {arg2}",
+            "[mask_last-bit|{@reg[1]@}]",
+            "[bool_strict_xor|{result}|@reg[0]@, @reg[1]@]"
+        ],
+        "less or equal than":"[bool_greater than|{result}|{arg2},{arg1}]",
+        "greater or equal than":"[bool_less than|{result}|{arg2},{arg1}]"
+    },
+
+    "if":{
+        "bool":{
+            "strict":{
+                "-":"bnez {arg1}, {struct}",
+                "not":"beq $zero, {arg1}, {struct}",
+                "and":[
+                    "[bool_strict_and|@reg[0]@|{arg1}, {arg2}]",
+                    "bnez @reg[0]@, {struct}"
+                ],
+                "or":[
+                    "[bool_strict_or|@reg[0]@|{arg1}, {arg2}]",
+                    "bnez  @reg[0]@, {struct}"
+                ],
+                "xor":[
+                    "[bool_strict_xor|@reg[0]@|{arg1}, {arg2}]",
+                    "bnez  @reg[0]@, {struct}"
+                ],
+                "same":"beq  {arg1}, {arg2}, {struct}",
+                "not same":"bne  {arg1}, {arg2}, {struct}"
+            },
+            "less than":"blt  {arg1}, {arg2}, {struct}",
+            "greater than":"bgt  {arg1}, {arg2}, {struct}",
+            "less or equal than":"ble  {arg1}, {arg2}, {struct}",
+            "greater or equal than":"bge  {arg1}, {arg2}, {struct}"
+        }
+    },
+
+    "print":[
+        "lui $a0, {arg1}",
+        "addi $v0, $0, 4",
+        "syscall"
+    ]
+}

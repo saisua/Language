@@ -1,0 +1,87 @@
+{
+    "Reserved-regex":{
+        "Tag":{
+            "LocalScope":"(?=[^\\\\]|^)::(.*?((?=[^\\\\]):)|\\[\\d+\\]:)",
+            "LocalN":"(?=[^\\\\]|^):\\d+:(.*?((?=[^\\\\]):)|\\[\\d+\\]:)",
+            "File":"(?=[^\\\\]|^):f:(.*?((?=[^\\\\]):)|\\[\\d+\\]:)",
+            "Global":"(?=[^\\\\]|^):g:(.*?((?=[^\\\\]):)|\\[\\d+\\]:)"
+        },
+
+        "Upper-call":"\\((.*?)\\|(.*?)\\)",
+
+        "_repr_comment1":"char:[int:''] means to transform the int to a char.",
+        "_repr_comment2":"Asterisk means do-not-check. Repr of compile-time values",
+        "Representations":{
+            "int":{
+                "int":"(char_to_int|:arg:)",
+                "str":"(parse_str_int|:arg:)",
+                "bool":"(bool_to_int|:arg:)",
+                "char":"(char_to_int|:arg:)"
+            },
+            "char":{
+                "str":"(str_to_char|:arg:)"
+            },
+            "str":{
+                "int":"(int_to_str|:arg:)",
+                "bool":"(bool_to_str|:arg:)",
+                "float":"(float_to_str|:arg:)",
+                "double":"(double_to_str|:arg:)"
+            },
+            "bool":{
+                "int":"(int_ne_zero|:arg:)"
+            },
+            "float":{
+                "str":"(parse_str_float|:arg:)",
+                "int":"(int_to_float|:arg:)"
+            },
+            "double":{
+                "str":"(parse_str_double|:arg:)",
+                "int":"(int_to_double|:arg:)"
+            }
+        }
+    },
+
+
+    "_comment_futur1":"Bridge to asm, add user-defined compiler tags,",
+    "_comment_futur2":"call to defined functions (import, ...),",
+    "_comment_futur3":"decide when to call the during-compilation interpreter",
+    "_comment_futur4":"check if attr is a final (str:'', int:\\d, ...)",
+    "_comment_futur5":"apply any new information (boundaries, tags...)",
+    "_comment_futur6":"and unwrap macros, if there are any",
+
+    "_comment_futur7":"So, this is like 'When detected bool, based of the",
+    "_comment_futur8":"operation, copy the code from lang, with those args",
+    "_comment_futur9":"and convert to a valid representation.",
+
+    "bool":{
+        "operation":{
+            "%operation_greater than%":{
+                "code":{
+                    "~bool_greater than~":[
+                        "#data-1#",
+                        "#data-2#"
+                    ]
+                }
+            }
+        }
+    },
+
+    "standalones":{
+        "if":{
+            "code":{
+                "~if_bool_strict_-~":"#boolean#"
+            }
+        },
+
+        "print":{
+            "code":{
+                "~print~":[
+                    "#data#"
+                ]
+            },
+            "representation":{
+                "data":"str"
+            }
+        }
+    }
+}

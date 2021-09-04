@@ -1,0 +1,95 @@
+{
+    "Reserved-regex":{
+        "Tag":"(?=[^\\\\]|^)#(.*?((?=[^\\\\])#)|\\[\\d+\\]#)",
+
+        "_type_comment1":"bool:[int] means int can be transformed to bool.",
+        "_type_comment2":"Asterisk means do-not-check",
+        "Type casts":{
+            "int":[
+                "char",
+                "bool",
+                "double",
+                "float"
+            ],
+            "char":"int",
+            "str":"*",
+            "bool":"*",
+            "double":[
+                "int",
+                "char",
+                "bool"
+            ]
+        }
+    },
+
+
+    "_futur_comment1":"What to do with unkown data (a = .+?)",
+    "_futur_comment2":"Could be sent to translation to extract any",
+    "_futur_comment3":"compiler / final data (type pex) or sent to",
+    "_futur_comment4":"syntax again to check if matches anything",
+
+    "_sub_comment1":"In case a sub-compilation of bool is needed, the compiler will",
+    "_sub_comment2":"start matching the sub regex to the input, creating instances of",
+    "_sub_comment3":"#bool# in the process",
+
+    "sub-bool": "%bool_Boolean%",
+    "bool":{
+        "data-1":{
+            "groups":0,
+            "type":"bool"
+        },
+        "operation":{
+            "groups":1
+        },
+        "data-2":{
+            "groups":2,
+            "type":"bool"
+        }
+    },
+
+    "standalones":{
+        "if" : {
+            "boolean" : {
+                "groups":0,
+                "sub-compile": "#bool#",
+                "type":"bool"
+            },
+            "struct" : {
+                "groups": 1
+            }
+        },
+
+        "while" : {
+            "boolean" : {
+                "groups":0,
+                "sub-compile": "#bool#",
+                "type":"bool"
+            },
+            "struct" : {
+                "groups": 1
+            }
+        },
+
+        "varDefinition":{
+            "CompilerTags":{
+                "groups":0
+            },
+            "varType":{
+                "groups":1
+            },
+            "varname":{
+                "groups":2
+            },
+            "data":{
+                "groups":3,
+                "type":1
+            }
+        },
+
+        "print":{
+            "data":{
+                "groups":0
+            }
+        }
+    }
+}
