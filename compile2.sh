@@ -1,0 +1,1 @@
+g++ -std=c++20 -ffast-math -march=native -O3 main.cpp -lhs -ltre -lstdc++ $@
