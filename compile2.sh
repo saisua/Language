@@ -1,1 +1,1 @@
-g++ -std=c++20 -ffast-math -march=native -O3 main.cpp -lhs -ltre -lstdc++ $@
+g++ -std=c++20 -O3 -ffast-math -march=native builder.cpp -o builder -g -lstdc++ -ljson11 $@

@@ -1,8 +1,6 @@
 # Language
 A concept of a language compiler generator based of json instruction files
 <br>
-Right now on hold due to testing on performance hyperscan against my own <a href="https://github.com/saisua/FR-B-Tree">FR-B-Tree</a> data structure and regex matching tool.
-<br>
 Requires a local compilation of intel <a href="https://github.com/intel/hyperscan">hyperscan</a>*
 <br>
 <br>
@@ -101,11 +99,11 @@ Start scan:<br>
 &emsp;Match for pattern 2 : (int)\s+([A-Za-z][\w\d]*?)\s*=\s*.+<br>
 &emsp;...<br>
 <br>
-+ Timings:(prints disabled)<br>
-&emsp;File reading time: 68053ns<br>
-&emsp;JSON parsing time: 51378ns<br>
-&emsp;Regex extraction time: 35498486ns<br>
-&emsp;HS database compilation time (628 regex):1354825115ns<br>
-&emsp;Regex matching time (18 tests): 149797ns<br>
-&emsp;Regex matching time (avg): 8322ns<br>
++ Timings: (prints disabled)<br>
+&emsp;File reading time: Depends of language file sizes<br>
+&emsp;JSON parsing time: Depends of language file sizes<br>
+&emsp;Regex extraction time: 1905308ns<br>
+&emsp;HS database compilation time (n regex): 1203183ns<br>
+&emsp;Regex matching time (18 tests): 35210ns<br>
+&emsp;Regex matching time (avg): 1956ns<br>
 <hr>

@@ -1,1 +1,1 @@
-g++ -std=c++20 -O3 -ffast-math -march=native compile.cpp -o compile -lstdc++ $@
+g++ -std=c++20 -O3 -ffast-math -march=native compile.cpp -o compile -lstdc++ -ljson11 $@
