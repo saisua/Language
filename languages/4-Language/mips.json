@@ -1,6 +1,6 @@
 {
     "Reserved-regex":{
-        "Tag":"(?=[^\\\\]|^)~(.*?((?=[^\\\\])~)|\\[\\d+\\]~)",
+        "Tag":"~",
         "Call":"(?=[^\\\\]|^)\\[(.*?)(\\|.*?){0,2}(?=[^\\\\])\\]",
         "Upper-call":"(?=[^\\\\]|^)\\((.*?)(((?=[^\\\\])\\))|(\\|(.*?)(?=[^\\\\])\\)))",
         "Variable":"(?=[^\\\\]|^)@(.*?((?=[^\\\\])@)|\\[\\d+\\]@)",
@@ -44,18 +44,18 @@
             ],
             "not same":"[bool_strict_xor|{result}|{arg1}, {arg2}]"
         },
-        "less than":[
+        "lessThan":[
             "sub @reg[0]@, {arg1}, {arg2}",
             "[mask_last-bit|{@reg[1]@}]",
             "[bool_strict_and|{result}|@reg[0]@, @reg[1]@]"
         ],
-        "greater than":[
+        "greaterThan":[
             "sub @reg[0]@, {arg1}, {arg2}",
             "[mask_last-bit|{@reg[1]@}]",
             "[bool_strict_xor|{result}|@reg[0]@, @reg[1]@]"
         ],
-        "less or equal than":"[bool_greater than|{result}|{arg2},{arg1}]",
-        "greater or equal than":"[bool_less than|{result}|{arg2},{arg1}]"
+        "lessOrEqualThan":"[bool_greaterThan|{result}|{arg2},{arg1}]",
+        "greaterOrEqualThan":"[bool_lessThan|{result}|{arg2},{arg1}]"
     },
 
     "if":{
@@ -69,19 +69,19 @@
                 ],
                 "or":[
                     "[bool_strict_or|@reg[0]@|{arg1}, {arg2}]",
-                    "bnez  @reg[0]@, {struct}"
+                    "bnez @reg[0]@, {struct}"
                 ],
                 "xor":[
                     "[bool_strict_xor|@reg[0]@|{arg1}, {arg2}]",
-                    "bnez  @reg[0]@, {struct}"
+                    "bnez @reg[0]@, {struct}"
                 ],
-                "same":"beq  {arg1}, {arg2}, {struct}",
-                "not same":"bne  {arg1}, {arg2}, {struct}"
+                "same":"beq {arg1}, {arg2}, {struct}",
+                "not same":"bne {arg1}, {arg2}, {struct}"
             },
-            "less than":"blt  {arg1}, {arg2}, {struct}",
-            "greater than":"bgt  {arg1}, {arg2}, {struct}",
-            "less or equal than":"ble  {arg1}, {arg2}, {struct}",
-            "greater or equal than":"bge  {arg1}, {arg2}, {struct}"
+            "lessThan":"blt {arg1}, {arg2}, {struct}",
+            "greaterThan":"bgt {arg1}, {arg2}, {struct}",
+            "lessOrEqualThan":"ble {arg1}, {arg2}, {struct}",
+            "greaterOrEqualThan":"bge {arg1}, {arg2}, {struct}"
         }
     },
 

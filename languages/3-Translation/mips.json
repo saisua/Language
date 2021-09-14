@@ -1,10 +1,10 @@
 {
     "Reserved-regex":{
         "Tag":{
-            "LocalScope":"(?=[^\\\\]|^)::(.*?((?=[^\\\\]):)|\\[\\d+\\]:)",
-            "LocalN":"(?=[^\\\\]|^):\\d+:(.*?((?=[^\\\\]):)|\\[\\d+\\]:)",
-            "File":"(?=[^\\\\]|^):f:(.*?((?=[^\\\\]):)|\\[\\d+\\]:)",
-            "Global":"(?=[^\\\\]|^):g:(.*?((?=[^\\\\]):)|\\[\\d+\\]:)"
+            "LocalScope":"::",
+            "LocalN":"::",
+            "File":"::",
+            "Global":"::"
         },
 
         "Upper-call":"\\((.*?)\\|(.*?)\\)",
@@ -55,9 +55,9 @@
 
     "bool":{
         "operation":{
-            "%operation_greater than%":{
+            "%operation_greaterThan%":{
                 "code":{
-                    "~bool_greater than~":[
+                    "~bool_greaterThan~":[
                         "#data-1#",
                         "#data-2#"
                     ]
@@ -68,8 +68,54 @@
 
     "standalones":{
         "if":{
-            "code":{
-                "~if_bool_strict_-~":"#boolean#"
+            "boolean":{
+                "%primitive_bool%":{
+                    "code":{
+                        "~if_bool_strict_-~":"#boolean#"
+                    }
+                }
+            },
+            "boolean_operation":{
+                "%bool_operation_strict_not%":{
+                    "code":{
+                        "~if_bool_strict_not~":"#boolean#"
+                    }
+                },
+                "%bool_operation_strict_and%":{
+                    "code":{
+                        "~if_bool_strict_and~":"#boolean#"
+                    }
+                },
+                "%bool_operation_strict_or%":{
+                    "code":{
+                        "~if_bool_strict_or~":"#boolean#"
+                    }
+                },
+                "%bool_operation_strict_xor%":{
+                    "code":{
+                        "~if_bool_strict_xor~":"#boolean#"
+                    }
+                },
+                "%bool_operation_lessThan%":{
+                    "code":{
+                        "~if_bool_lessThan~":"#boolean#"
+                    }
+                },
+                "%bool_operation_greaterThan%":{
+                    "code":{
+                        "~if_bool_greaterThan~":"#boolean#"
+                    }
+                },
+                "%bool_operation_lessOrEqualThan%":{
+                    "code":{
+                        "~if_bool_lessOrEqualThan~":"#boolean#"
+                    }
+                },
+                "%bool_operation_greaterOrEqualThan%":{
+                    "code":{
+                        "~if_bool_greaterOrEqualThan~":"#boolean#"
+                    }
+                }
             }
         },
 

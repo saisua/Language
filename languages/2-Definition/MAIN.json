@@ -1,6 +1,6 @@
 {
     "Reserved-regex":{
-        "Tag":"(?=[^\\\\]|^)#(.*?((?=[^\\\\])#)|\\[\\d+\\]#)",
+        "Tag":"#",
 
         "_type_comment1":"bool:[int] means int can be transformed to bool.",
         "_type_comment2":"Asterisk means do-not-check",
