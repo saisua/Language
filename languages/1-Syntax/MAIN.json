@@ -1,6 +1,6 @@
 {
     "Reserved-regex":{
-        "__Tag__":"(?=[^\\\\]|^)%(.*?((?=[^\\\\])%)|\\[\\d+\\]%)"
+        "Tag":"%"
     },
 
     "_comment_compilerTag1":"The tags the compiler will use to mark every line/struct",
@@ -58,10 +58,10 @@
                 "same":" is ",
                 "not same":" is not "
             },
-            "less than":"<",
-            "greater than":">",
-            "less or equal than":"<=",
-            "greater or equal than":">="
+            "lessThan":"<",
+            "greaterThan":">",
+            "lessOrEqualThan":"<=",
+            "greaterOrEqualThan":">="
         }
     },
     

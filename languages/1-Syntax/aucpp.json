@@ -1,6 +1,6 @@
 {
     "Reserved-regex":{
-        "__Tag__":"(?=[^\\\\]|^)%(.*?((?=[^\\\\])%)|\\[\\d+\\]%)"
+        "Tag":"%"
     },
 
     "_comment_compilerTag1":"The tags the compiler will use to mark every line/struct",
