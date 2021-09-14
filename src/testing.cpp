@@ -16,15 +16,15 @@
 #include <array>
 
 // External includes
-#include <hyperscan/src/hs.h>
 
 // Local includes
-#include "matcher.cpp"
+#include "Mreg.cpp"
 
-inline const void test(std::vector<std::string>& test_battery, hs_database_t* database, 
-                                hs_scratch_t* scratch, void* reg_data){
-    for(std::string test : test_battery)
-        match_line(test, database, scratch, reg_data);
+inline const void test(std::vector<std::string>& test_battery, //hs_database_t* database, 
+                                //hs_scratch_t* scratch,
+                                void* reg_data){
+    for(std::string test : test_battery);
+        //match_line(test, database, scratch, reg_data);
 }
 
 inline std::vector<std::string> read_vec_file(const std::string& filename){
