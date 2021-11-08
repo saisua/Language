@@ -1,6 +1,10 @@
 {
     "Reserved-regex":{
-        "Tag":"%"
+        "Tag":"%",
+
+        "utils":[
+            "var_handler//var_handler"
+        ]
     },
 
     "_comment_compilerTag1":"The tags the compiler will use to mark every line/struct",
@@ -30,21 +34,21 @@
             "true",
             "false"
         ],
-        "float":"\\d+\\.(f|\\d+)",
-        "double":"\\d+\\.d"
+        "float":"\\d*\\.(f|\\d+f?)",
+        "double":"\\d*\\.(d|\\d+d)"
     },
 
-    "bool":{
-        "Boolean":"%bool_LBoolean%%bool_RBoolean%",
+    "t-bool":{
+        "Boolean":"%t-bool_LBoolean%%t-bool_RBoolean%",
         
         "negation":"not\\s",
         "LBoolean":[
-            "(%bool_negation%)?\\s*%var%",
-            "(%bool_negation%)?\\s*\\d+"
+            "(%t-bool_negation%)?\\s*%var%",
+            "(%t-bool_negation%)?\\s*\\d+"
         ],
         "RBoolean":[
-            "\\s*%bool_operation%\\s*%bool_LBoolean%\\s*",
-            "\\s*%bool_operation_strict%\\s*%primitive_bool%\\s*"
+            "\\s*%t-bool_operation%\\s*%t-bool_LBoolean%\\s*",
+            "\\s*%t-bool_operation_strict%\\s*%primitive_bool%\\s*"
         ],
 
         "operation":{
@@ -121,10 +125,10 @@
     "_comment_standalones":"Standalones are the general instructions that will start on every newline.",
     "standalones":{
         "if":[
-            "if\\s+%bool_Boolean%*\\s*%struct_start%"
+            "if\\s+%t-bool_Boolean%*\\s*%struct_start%"
         ],
         "while":[
-            "while\\s+%bool_Boolean%*\\s*%struct_start%."
+            "while\\s+%t-bool_Boolean%*\\s*%struct_start%."
         ],
         "varDefinition":[
             "()()%var%\\s*=([^=].*?)",
@@ -141,6 +145,7 @@
         "print":[
             "print\\((.*?)\\)",
             "print\\s+(.*?)"
-        ]
+        ],
+        "structStart":"%struct_start%"
     }
 }

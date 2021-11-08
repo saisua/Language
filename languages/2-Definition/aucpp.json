@@ -19,7 +19,16 @@
                 "char",
                 "bool"
             ]
-        }
+        },
+
+        "_operations_comment1":"Operations are needed for the compiler",
+        "_operations_comment2":"to know when to start taking notes about",
+        "_operations_comment3":"the order of operations. This is for",
+        "_operations_comment4":"mathematical operations in which the order",
+        "_operations_comment5":"of operations is important.",
+        "Operations":[
+            "#t-bool#"
+        ]
     },
 
 
@@ -30,10 +39,10 @@
 
     "_sub_comment1":"In case a sub-compilation of bool is needed, the compiler will",
     "_sub_comment2":"start matching the sub regex to the input, creating instances of",
-    "_sub_comment3":"#bool# in the process",
+    "_sub_comment3":"#t-bool# in the process",
 
-    "sub-bool": "%bool_Boolean%",
-    "bool":{
+    "sub-bool": "%t-bool_Boolean%",
+    "t_bool":{
         "data-1":{
             "groups":0,
             "type":"bool"
@@ -51,7 +60,7 @@
         "if" : {
             "boolean" : {
                 "groups":0,
-                "sub-compile": "#bool#",
+                "sub-compile": "#t-bool#",
                 "type":"bool"
             },
             "struct" : {
@@ -62,8 +71,9 @@
         "while" : {
             "boolean" : {
                 "groups":0,
-                "sub-compile": "#bool#",
-                "type":"bool"
+                "sub-compile": "#t-bool#",
+                "type":"bool",
+                "default":1
             },
             "struct" : {
                 "groups": 1
@@ -75,7 +85,8 @@
                 "groups":0
             },
             "varType":{
-                "groups":1
+                "groups":1,
+                "default":"(determine)"
             },
             "varname":{
                 "groups":2
@@ -90,6 +101,9 @@
             "data":{
                 "groups":0
             }
+        },
+
+        "structStart":{
         }
     }
 }

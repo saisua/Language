@@ -7,6 +7,12 @@
             "Global":"::"
         },
 
+        "Line-Attribute-Access":{
+            "ROOT":"/",
+            "PWD":".",
+            "SET":"!"
+        },
+
         "Upper-call":"\\((.*?)\\|(.*?)\\)",
 
         "_repr_comment1":"char:[int:''] means to transform the int to a char.",
@@ -53,11 +59,11 @@
     "_comment_futur8":"operation, copy the code from lang, with those args",
     "_comment_futur9":"and convert to a valid representation.",
 
-    "bool":{
+    "t-bool":{
         "operation":{
-            "%operation_greaterThan%":{
+            "%operation_greater than%":{
                 "code":{
-                    "~bool_greaterThan~":[
+                    "~bool_greater than~":[
                         "#data-1#",
                         "#data-2#"
                     ]
@@ -71,49 +77,51 @@
             "boolean":{
                 "%primitive_bool%":{
                     "code":{
-                        "~if_bool_strict_-~":"#boolean#"
-                    }
-                }
-            },
-            "boolean_operation":{
-                "%bool_operation_strict_not%":{
-                    "code":{
-                        "~if_bool_strict_not~":"#boolean#"
+                        "~if_bool_strict_-~":"#t-bool#"
                     }
                 },
-                "%bool_operation_strict_and%":{
-                    "code":{
-                        "~if_bool_strict_and~":"#boolean#"
-                    }
-                },
-                "%bool_operation_strict_or%":{
-                    "code":{
-                        "~if_bool_strict_or~":"#boolean#"
-                    }
-                },
-                "%bool_operation_strict_xor%":{
-                    "code":{
-                        "~if_bool_strict_xor~":"#boolean#"
-                    }
-                },
-                "%bool_operation_lessThan%":{
-                    "code":{
-                        "~if_bool_lessThan~":"#boolean#"
-                    }
-                },
-                "%bool_operation_greaterThan%":{
-                    "code":{
-                        "~if_bool_greaterThan~":"#boolean#"
-                    }
-                },
-                "%bool_operation_lessOrEqualThan%":{
-                    "code":{
-                        "~if_bool_lessOrEqualThan~":"#boolean#"
-                    }
-                },
-                "%bool_operation_greaterOrEqualThan%":{
-                    "code":{
-                        "~if_bool_greaterOrEqualThan~":"#boolean#"
+                ".%t-bool%":{
+                    "operation":{
+                        "%t-bool_operation_strict_not%":{
+                            "code":{
+                                "~if_bool_strict_not~":"#t-bool#"
+                            }
+                        },
+                        "%t-bool_operation_strict_and%":{
+                            "code":{
+                                "~if_bool_strict_and~":"#t-bool#"
+                            }
+                        },
+                        "%t-bool_operation_strict_or%":{
+                            "code":{
+                                "~if_bool_strict_or~":"#t-bool#"
+                            }
+                        },
+                        "%t-bool_operation_strict_xor%":{
+                            "code":{
+                                "~if_bool_strict_xor~":"#t-bool#"
+                            }
+                        },
+                        "%t-bool_operation_less than%":{
+                            "code":{
+                                "~if_bool_less than~":"#t-bool#"
+                            }
+                        },
+                        "%t-bool_operation_greater than%":{
+                            "code":{
+                                "~if_bool_greater than~":"#t-bool#"
+                            }
+                        },
+                        "%t-bool_operation_less or equal than%":{
+                            "code":{
+                                "~if_bool_less or equal than~":"#t-bool#"
+                            }
+                        },
+                        "%t-bool_operation_greater or equal than%":{
+                            "code":{
+                                "~if_bool_greater or equal than~":"#t-bool#"
+                            }
+                        }
                     }
                 }
             }
@@ -128,6 +136,10 @@
             "representation":{
                 "data":"str"
             }
+        },
+
+        "structStart":{
+            "code":"~structStart~"
         }
     }
 }
