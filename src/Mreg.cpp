@@ -24,7 +24,7 @@
 #include <fstream>
 #include <sys/resource.h>
 #include <cstring>
-//#include "cllist.cpp"
+#include "utils/cllist.cpp"
 #include <regex>
 #include "full_regex.cpp"
 #include <optional>
@@ -104,6 +104,7 @@ using regex=Fregex;
 // when detected, and when it ends, returns
 // to the node 
 #define WARP_CAPTURES 5
+#define NUMBER_CAPTURES 6
 #define SEMIWARP_MASK (std::numeric_limits<T>::max()>>1)
 #define WARP_MASK (std::numeric_limits<T>::max()>>2 | ~SEMIWARP_MASK)
 
@@ -206,24 +207,31 @@ class Mreg{
 		// This will take the form of void* in positions 0..control_positions
 		// and of int in control_positions+1..node_length
 		std::vector<T> data;
-  
-  
-	Mreg() {
-		this->data = std::vector<T>(node_length*2, 0);
-		this->data.reserve(reserved_data_size);
+		C_linked_list<uintptr_t> result_subgr;
 
-		this->contains_captures = std::vector<bool> ();
-		this->nodes_captures = std::vector<T>();
-		this->str_captures = std::vector<const char*>();
-		this->str_starts = std::vector<const char*>();
-		this->warps = std::stack<T>();
-		this->str_warps = std::stack<const char*>();
+		std::vector<uint_fast8_t> final_sizes;
 
-		this->nodes_data_captures = std::unordered_set<T>();
+		Mreg()
+		{
+			this->data = std::vector<T>(node_length * 2, 0);
+			this->data.reserve(reserved_data_size);
 
+			this->contains_captures = std::vector<bool>();
+			this->nodes_captures = std::vector<T>();
+			this->str_captures = std::vector<const char *>();
+			this->str_starts = std::vector<const char *>();
+			this->warps = std::stack<T>();
+			this->str_warps = std::stack<const char *>();
 
-		this->contains_captures.push_back(false);
-	}
+			this->nodes_data_captures = std::unordered_set<T>();
+
+			this->contains_captures.push_back(false);
+
+			printf("TEST1\n");
+			this->result_subgr = C_linked_list<uintptr_t>();
+			this->result_subgr.reserve();
+			printf("TEST2\n");
+		}
 
 	~Mreg(){
 		this->delete_pointers();
@@ -1049,8 +1057,6 @@ class Mreg{
 		__attribute__ ((flatten))
 		#endif
 		__attribute__ ((hot))
-		// Should it have a const attribute?
-		
 	{
 		T mreg = node_length;
 
@@ -1150,12 +1156,17 @@ end_loop:
 		if((!*str) && final){ [[likely]];
 			#if !PLAIN_FRB_MATCH
 			if(! this->contains_captures[final]){
+				[[unlikely]];
+				
 				#if FRB_VERBOSE
 				printf("Id %u does NOT contain captures.\n", final);
 				#endif
 
+				*this->result_subgr.append_position() = final;
+
 				return final;
 			}
+			T *pos_array = this->result_subgr.append_node(this->data[mreg + NUMBER_CAPTURES]);
 
 			typename
 			std::vector<T>::const_iterator nodes_iter = this->nodes_captures.cbegin();
@@ -1204,9 +1215,12 @@ end_loop:
 			
 			std::string buffer = std::string();
 			const char* group_start;
-			char *subStr;
+			//char *subStr;
 
 			T new_groups, char_dist;
+
+			pos_array[0] = final;
+			uint_fast8_t pos_index = 1;
 
 			// We can do while because we have not returned,
 			// so, at least once we have to search for starting/final nodes
@@ -1216,14 +1230,14 @@ end_loop:
 					group_start = this->str_starts.back();
 					this->str_starts.pop_back();
 					
-					subStr = static_cast<char*>(
+					pos_array[pos_index] = reinterpret_cast<uintptr_t>(
 						calloc(std::distance(group_start, *str_iter), sizeof(char))); 
-					memcpy(subStr, group_start, std::distance(group_start, *str_iter));
+					memcpy((char *)pos_array[pos_index++], group_start, std::distance(group_start, *str_iter));
 
 					#if FRB_VERBOSE
 					printf(" End capture in char: %c\n", *print_iter);
 
-					printf("----%s-\n", subStr);
+					printf("----%s-\n", pos_array[pos_index]);
 					#endif
 				}
 
@@ -1248,12 +1262,12 @@ end_loop:
 			#endif
 
 			for(const char* last_str : this->str_starts){
-				subStr = static_cast<char*>(
+				pos_array[pos_index] = reinterpret_cast<uintptr_t>(
 						calloc(std::distance(last_str, str), sizeof(char))); 
-				memcpy(subStr, last_str, std::distance(last_str, str));
+				memcpy((char *)pos_array[pos_index++], last_str, std::distance(last_str, str));
 
 				#if FRB_VERBOSE
-				printf("----%s-\n", subStr);
+				printf("----%s-\n", pos_array[pos_index]);
 				#endif
 			}
 

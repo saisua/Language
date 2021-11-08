@@ -5,7 +5,11 @@
 #include <fstream>
 #include <exception>
 
-std::string read_str_file(const std::string& filename){
+std::string read_str_file(const std::string &filename)
+    __attribute__((always_inline));
+
+std::string read_str_file(const std::string& filename)
+{
     std::string line;
     std::string result;
     std::fstream file;

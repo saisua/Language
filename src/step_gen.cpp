@@ -15,16 +15,22 @@
 
 std::string get_string_from_path(json11::Json &doc, const std::string & path);
 std::string read_str_file(const std::string& filename);
-
+json11::Json get_object_from_path(json11::Json &doc, const std::string &path);
+void apply_step(std::fstream& out, const std::vector<std::string> & file_list, 
+                                    const std::string & filename_replace,
+                                    const std::string & tag_path, 
+                                    const std::string & trans_access);
+                                    
 #define generated_tag_path "src//"
 #define generated_tag_name "generated_tag_list"
 #define generated_tag_extension ".h"
 inline void generate_step_char(std::fstream& out,
                             const std::string & from_lang_name,
                             const std::string & to_lang_name,
-                            const std::vector<std::string>& filenames = {{
-                                    LANG_GEN_RENAME_FROM, LANG_GEN_RENAME_TO}},
-                            const std::string& tag_path="Reserved-regex_Tag"){
+                            const std::vector<std::string>& from_filenames = {{LANG_GEN_RENAME_FROM}},
+                            const std::vector<std::string>& to_filenames = {{LANG_GEN_RENAME_TO}},
+                            const std::string& tag_path="Reserved-regex_Tag",
+                            const std::string& trans_access="Reserved-regex_Line-Attribute-Access"){
 
     {
     std::string path = generated_tag_path;
@@ -36,6 +42,7 @@ inline void generate_step_char(std::fstream& out,
 
     if(!out.is_open())
         printf("ERROR!");
+
     {
     std::string TMP = "";
 
@@ -48,6 +55,21 @@ inline void generate_step_char(std::fstream& out,
         out.write(part.c_str(), part.length());
     }
 
+    apply_step(out, from_filenames, LANG_FROM, tag_path, trans_access);
+    apply_step(out, to_filenames, LANG_TO, tag_path, trans_access);
+
+    printf("\n");
+    out << "\n\n#define LANG_FROM \"" << from_lang_name 
+            << "\"\n#define LANG_TO \"" << to_lang_name
+            << "\"\n\n#endif";
+    out.close();
+}
+
+void apply_step(std::fstream& out, const std::vector<std::string> & file_list, 
+                                    const std::string & filename_replace,
+                                    const std::string & tag_path, 
+                                    const std::string & trans_access){
+
     std::smatch m;
     std::regex name_extract ("\\d+-(\\w+)\\/+\\w+");
     std::regex str_format ("%s");
@@ -55,10 +77,9 @@ inline void generate_step_char(std::fstream& out,
     std::string err = "";
 
     int file_id = 0;
-    for(std::string filename : filenames){
-        filename = std::regex_replace(filename, str_format, current_compilation);
 
-
+    for(std::string filename : file_list){
+        filename = std::regex_replace(filename, str_format, filename_replace);
         json11::Json doc = json11::Json::parse(read_str_file(filename), err);
         if(err.size())
             printf("%s\n", err.c_str());
@@ -75,20 +96,25 @@ inline void generate_step_char(std::fstream& out,
             
             out.write(to_write.c_str(), to_write.length());
 
+            if(filename.find("3-Translation")){
+                json11::Json modifiers = get_object_from_path(doc, trans_access);
+                std::string pos_modifier = std::string();
+                
+                for(auto & modifier : modifiers.object_items())
+                    pos_modifier += "#define PATH_" + modifier.first + " '" + modifier.second.string_value() + "'\n";
+                
+                out.write(pos_modifier.c_str(), pos_modifier.length());
+            }
+
             std::string to_write2 = "#define " + m[1].str() + "_id " + std::to_string(++file_id) + "\n";
 
             out.write(to_write2.c_str(), to_write2.length());
         }
     }
-
-
-    printf("\n");
-    out << "\n\n#define LANG_FROM \"" << from_lang_name 
-            << "\"\n#define LANG_TO \"" << to_lang_name
-            << "\"\n\n#endif";
-    out.close();
 }
 
+
+#ifdef Syntax_match_symbol
 #define check_id(x) (id.starts_with(x) && id.ends_with(x))
 inline uint_fast8_t file_id(const std::string id){
     if(check_id(Syntax_match_symbol))
@@ -102,7 +128,9 @@ inline uint_fast8_t file_id(const std::string id){
     
     return 0u;
 }
+#endif
 
+#ifdef Syntax_id
 inline std::string get_path(std::string path, uint id = 0){
     if(id == 0)
         id = file_id(path);
@@ -116,3 +144,4 @@ inline std::string get_path(std::string path, uint id = 0){
     else if(id == Language_id)
         return std::regex_replace(path, std::regex(Language_match_symbol), "");
 }
+#endif

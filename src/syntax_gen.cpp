@@ -40,7 +40,7 @@ inline void _solve_generate_syntax(Mreg_gen<uintptr_t> & data, json11::Json & do
 
 inline void generate_syntax(Mreg_gen<uintptr_t> & data){
     std::string err = "";
-    std::string syntax_file = "languages/1-Syntax/" current_compilation ".json";
+    std::string syntax_file = "languages/1-Syntax/" LANG_FROM ".json";
 
     json11::Json doc = json11::Json::parse(read_str_file(syntax_file), err);
 
