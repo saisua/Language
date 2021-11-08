@@ -59,7 +59,7 @@ int main(int argc, const char * argv[]){
         printf("Reading file: %s\n", path.c_str());
         files.push_back(json11::Json::parse(
                     read_str_file(
-                        std::regex_replace(path, std::regex("%s"), current_compilation)
+                        std::regex_replace(path, std::regex("%s"), LANG_FROM)
                     ), err));
     }
 
@@ -67,17 +67,29 @@ int main(int argc, const char * argv[]){
         printf("Reading file: %s\n", path.c_str());
         files.push_back(json11::Json::parse(
                     read_str_file(
-                        std::regex_replace(path, std::regex("%s"), current_compilation)
+                        std::regex_replace(path, std::regex("%s"), LANG_TO)
                     ), err));
     }
     }
 
-    printf("(1/3) Generate syntax\n");
+    std::string compile_info = read_str_file("lang_compile.h");
+    compile_info += "\n\n";
+    compile_info += read_str_file("src/generated_tag_list.h");
+
+    // Clean current_lang
+    std::ofstream current_lang;
+    current_lang.open(LANG_LANGUAGES_FOLDER "current_language.h", std::ios::out | std::ofstream::trunc);
+    current_lang << compile_info + "\n\n";
+    current_lang.close();
+
+    printf("(1/4) Generate syntax\n");
     generate_syntax(generated_matcher);
-    printf("(2/3) Generate codes\n");
+    printf("(2/4) Generate codes\n");
     generate_codes(generated_matcher);
-    printf("(3/3) Generate checks\n");
+    printf("(3/4) Generate checks\n");
     generate_definition_checks(generated_matcher, files);
+    printf("(4/4) Resolve dependencies\n");
+    generate_utils_dependencies(files);
 
     return 0;
 }

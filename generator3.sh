@@ -1,0 +1,1 @@
+g++ -o language -std=c++20 -O3 -ffast-math -march=native generator.cpp -lstdc++ $@

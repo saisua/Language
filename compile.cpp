@@ -33,37 +33,7 @@ int main(int argc, const char * argv[]){
     printf("Setting up preparations:\n\n");
     std::string from = argv[find_argv(argc, argv, "-from") + 1];
     std::string to = argv[find_argv(argc, argv, "-to") + 1];
-    std::string current = current_compilation;
     printf("  %s -> %s\n\n", from.c_str(), to.c_str());
-
-    std::regex filename_replace ("%s");
-
-    for(std::string file_format : {LANG_GEN_RENAME_FROM}){
-        std::string old_path = std::regex_replace(file_format, filename_replace, from);
-        std::string new_path = std::regex_replace(file_format, filename_replace, current);
-
-        
-        errors += std::filesystem::copy_file(old_path.c_str(), new_path.c_str(),
-                                std::filesystem::copy_options::overwrite_existing);
-
-        #if LANG_GEN_VERBOSE
-        printf("  Copied \"%s\" to \"%s\"\n", old_path.c_str(), new_path.c_str()); fflush(stdout);
-        #endif
-    }
-    
-    for(std::string file_format : {LANG_GEN_RENAME_TO}){
-        std::string old_path = std::regex_replace(file_format, filename_replace, to);
-        std::string new_path = std::regex_replace(file_format, filename_replace, current);
-        
-        
-        errors += std::filesystem::copy_file(old_path.c_str(), new_path.c_str(),
-                                std::filesystem::copy_options::overwrite_existing);
-
-
-        #if LANG_GEN_VERBOSE
-        printf("  Copied \"%s\" to \"%s\"\n", old_path.c_str(), new_path.c_str());
-        #endif
-    }
     
     {
     std::fstream out;
@@ -73,7 +43,7 @@ int main(int argc, const char * argv[]){
 
     printf("Starting the compilation of the language...\n");
     // Compile the files (unnecessary if not testing)
-    errors += system("./compile2.sh");
+    errors += system("./builder2.sh");
     // Run the binary of the compiler compiler
     //errors += system("./main");
 
@@ -82,7 +52,7 @@ int main(int argc, const char * argv[]){
 
     // Compile3 will load the mreg and start
     // passing values to 
-    errors += system("./compile3.sh");
+    errors += system("./generator3.sh");
     return errors // + system("./generator");
         ;
 }   

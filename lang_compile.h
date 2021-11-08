@@ -1,13 +1,19 @@
 #ifndef LANG_COMPILE_H
 #define LANG_COMPILE_H
 
-#define LANG_SYNTAX_PATH "languages//1-Syntax//"
-#define LANG_DEFINITION_PATH "languages//2-Definition//"
-#define LANG_TRANSLATION_PATH "languages//3-Translation//"
-#define LANG_LANGUAGE_PATH "languages//4-Language//"
+#define LANG_LANGUAGES_FOLDER "languages//"
 
-#define current_compilation "MAIN"
+#define LANG_SYNTAX_PATH LANG_LANGUAGES_FOLDER "1-Syntax//"
+#define LANG_DEFINITION_PATH LANG_LANGUAGES_FOLDER "2-Definition//"
+#define LANG_TRANSLATION_PATH LANG_LANGUAGES_FOLDER "3-Translation//"
+#define LANG_LANGUAGE_PATH LANG_LANGUAGES_FOLDER "4-Language//"
+#define LANG_UTILS_FOLDER "utils//"
+#define LANG_OPTIMIZATIONS_FOLDER "Optimizations//"
 
+#define LANG_SYNTAX_TREE_FOLDER "tree//"
+#define LANG_DEFINITION_CODES_FOLDER "codes//"
+#define LANG_DEFINITION_GENERATED_FOLDER "generated//"
+#define LANG_TRANSLATION_CODE_GROUPS_FOLDER "code_groups//"
 
 // This should not be redefined.
 // However, just in case there is one case
@@ -26,5 +32,7 @@
 #ifndef LANG_GEN_RENAME_OTHER
 #define LANG_GEN_RENAME_OTHER {}
 #endif
+
+#define max_flag(size) (pow(2,(size-1))-1)
 
 #endif
