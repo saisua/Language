@@ -17,35 +17,43 @@
 
 int find_argv(int argc, const char * argv[], const char * search)
     __attribute__((always_inline));
+/*
 inline void generate_step_char(std::fstream& out,
-                            const std::vector<std::string>& filenames,
-                            const std::string& tag_path);
+                            const std::string & from_lang_name,
+                            const std::string & to_lang_name,
+                            const std::vector<std::string>& from_filenames = {{LANG_GEN_RENAME_FROM}},
+                            const std::vector<std::string>& to_filenames = {{LANG_GEN_RENAME_TO}},
+                            const std::string& tag_path="Reserved-regex_Tag",
+                            const std::string& trans_access="Reserved-regex_Line-Attribute-Access");
+*/
 
 
 int main(int argc, const char * argv[]){
     int errors = 0;
-    
+
+    std::string from, to;
+
     if(argc < 5){
+        /*
         printf("Minimal usage: %s -from <language> -to <language>\n", argv[0]);
         return 1;
+        */
+        from = "aucpp";
+        to = "mips";
+    } else {
+        printf("Setting up preparations:\n\n");
+        from = std::string(argv[find_argv(argc, argv, "-from") + 1]);
+        to = std::string(argv[find_argv(argc, argv, "-to") + 1]);
     }
-
-    printf("Setting up preparations:\n\n");
-    std::string from = argv[find_argv(argc, argv, "-from") + 1];
-    std::string to = argv[find_argv(argc, argv, "-to") + 1];
     printf("  %s -> %s\n\n", from.c_str(), to.c_str());
-    
-    {
-    std::fstream out;
 
-    generate_step_char(out, from, to);
-    }
+    generate_step_char(from, to);
 
     printf("Starting the compilation of the language...\n");
     // Compile the files (unnecessary if not testing)
     errors += system("./builder2.sh");
-    // Run the binary of the compiler compiler
-    //errors += system("./main");
+    // Run the binary of the compiler builder
+    errors += system("./builder");
 
     printf("Language compilated.\n");
     printf("Generating the compiler...\n");
@@ -53,7 +61,7 @@ int main(int argc, const char * argv[]){
     // Compile3 will load the mreg and start
     // passing values to 
     errors += system("./generator3.sh");
-    return errors // + system("./generator");
+    return errors // + system("./language");
         ;
 }   
 

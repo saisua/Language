@@ -16,29 +16,28 @@
 std::string get_string_from_path(json11::Json &doc, const std::string & path);
 std::string read_str_file(const std::string& filename);
 json11::Json get_object_from_path(json11::Json &doc, const std::string &path);
-void apply_step(std::fstream& out, const std::vector<std::string> & file_list, 
+int apply_step(std::fstream& out, const std::vector<std::string> & file_list, 
                                     const std::string & filename_replace,
                                     const std::string & tag_path, 
-                                    const std::string & trans_access);
+                                    const std::string & trans_access,
+                                    int file_id);
                                     
 #define generated_tag_path "src//"
 #define generated_tag_name "generated_tag_list"
 #define generated_tag_extension ".h"
-inline void generate_step_char(std::fstream& out,
-                            const std::string & from_lang_name,
-                            const std::string & to_lang_name,
-                            const std::vector<std::string>& from_filenames = {{LANG_GEN_RENAME_FROM}},
-                            const std::vector<std::string>& to_filenames = {{LANG_GEN_RENAME_TO}},
-                            const std::string& tag_path="Reserved-regex_Tag",
-                            const std::string& trans_access="Reserved-regex_Line-Attribute-Access"){
+inline void generate_step_char(
+                            std::string & from_lang_name,
+                            std::string & to_lang_name,
+                            const std::vector<std::string> & from_filenames = {LANG_GEN_RENAME_FROM},
+                            const std::vector<std::string> & to_filenames = {LANG_GEN_RENAME_TO},
+                            const std::string & tag_path="Reserved-regex_Tag",
+                            const std::string & trans_access="Reserved-regex_Line-Attribute-Access"){
 
-    {
-    std::string path = generated_tag_path;
-    path.append(generated_tag_name);
-    path.append(generated_tag_extension);
+    std::fstream out;
 
-    out.open(path.c_str(), std::ios::out);
-    }
+    //printf("TESTTEST\n");
+
+    out.open(generated_tag_path generated_tag_name generated_tag_extension, std::ios::out);
 
     if(!out.is_open())
         printf("ERROR!");
@@ -55,8 +54,8 @@ inline void generate_step_char(std::fstream& out,
         out.write(part.c_str(), part.length());
     }
 
-    apply_step(out, from_filenames, LANG_FROM, tag_path, trans_access);
-    apply_step(out, to_filenames, LANG_TO, tag_path, trans_access);
+    int files_added = apply_step(out, from_filenames, LANG_FROM, tag_path, trans_access, 0);
+    apply_step(out, to_filenames, LANG_TO, tag_path, trans_access, files_added);
 
     printf("\n");
     out << "\n\n#define LANG_FROM \"" << from_lang_name 
@@ -65,18 +64,17 @@ inline void generate_step_char(std::fstream& out,
     out.close();
 }
 
-void apply_step(std::fstream& out, const std::vector<std::string> & file_list, 
+int apply_step(std::fstream& out, const std::vector<std::string> & file_list, 
                                     const std::string & filename_replace,
                                     const std::string & tag_path, 
-                                    const std::string & trans_access){
+                                    const std::string & trans_access,
+                                    int file_id = 0){
 
     std::smatch m;
     std::regex name_extract ("\\d+-(\\w+)\\/+\\w+");
     std::regex str_format ("%s");
 
     std::string err = "";
-
-    int file_id = 0;
 
     for(std::string filename : file_list){
         filename = std::regex_replace(filename, str_format, filename_replace);
@@ -111,8 +109,8 @@ void apply_step(std::fstream& out, const std::vector<std::string> & file_list,
             out.write(to_write2.c_str(), to_write2.length());
         }
     }
+    return file_id;
 }
-
 
 #ifdef Syntax_match_symbol
 #define check_id(x) (id.starts_with(x) && id.ends_with(x))

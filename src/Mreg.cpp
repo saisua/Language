@@ -30,6 +30,9 @@
 #include <optional>
 #include <limits>
 #include <csignal>
+#if FBR_USE_CONSTEXPR_DATA
+#include "frb_data.h"
+#endif
 
 using regex=Fregex;
 
@@ -71,11 +74,15 @@ using regex=Fregex;
 #define start_match_char  7u
 #define last_char 127u
 #define control_positions 7u
+// Offset positions subtracts to the node first position
+// so that when accessed we can just shave of
+// some control positions unused for free
+#define offset_positions 25u
 #define reserved_data_size 2^15
 
 #define char_offset (control_positions - start_match_char)
 
-#define node_length (last_char - start_match_char + control_positions)
+#define node_length (last_char - start_match_char + control_positions - offset_positions)
 
 
 
@@ -87,24 +94,24 @@ using regex=Fregex;
 
 // The id of the added match string, to not 
 // mistake groups that are from previous compilations
-#define GROUP_ID 0
+#define GROUP_ID (offset_positions + 0)
 // A pointer to a vector<uint> of nodes, from which 
 // we were meant to merge, when we advance one char
-#define GROUP 1
+#define GROUP (offset_positions + 1)
 // The next node we must route to
-#define NEXT 2
+#define NEXT (offset_positions + 2)
 // The amount of nodes pointing to this node
-#define LINKS 3
-// The final id of the match. 0 if the node is not final
-#define FINAL 4
+#define LINKS (offset_positions + 3)
+// The final id of the match. (offset_positions + 0) if the node is not final
+#define FINAL (offset_positions + 4)
 // A pointer to a list of captures to keep track what
 // sub-strings to get and what not
 // Also contains a flag, which will return 
 // to the start of the tree
 // when detected, and when it ends, returns
 // to the node 
-#define WARP_CAPTURES 5
-#define NUMBER_CAPTURES 6
+#define WARP_CAPTURES (offset_positions + 5)
+#define NUMBER_CAPTURES (offset_positions + 6)
 #define SEMIWARP_MASK (std::numeric_limits<T>::max()>>1)
 #define WARP_MASK (std::numeric_limits<T>::max()>>2 | ~SEMIWARP_MASK)
 
@@ -175,66 +182,74 @@ class Mreg{
 	// Not all should be public, but I have yet to look up
 	// how to make some variables only accessable from child
 	public:
-		// Take note of which pointers have been deleted
-		std::unordered_set<T> deleted;
-		std::list<capture_t<T>*> unknown_ptrs;
-		
-		std::vector<bool> contains_captures;
-		std::vector<T> nodes_captures;
-		std::vector<const char*> str_captures;
-		std::vector<const char*> str_starts;
-		std::stack<T> warps;
-		std::stack<const char*> str_warps;
-
-		std::unordered_set<T> nodes_data_captures;
-
-		std::queue<uint8_t> capture = std::queue<uint8_t>();
-		// Also, I could turn WARP_CAPTURES to int and add the ids only.
-		// capture end would be in last capture node + 1
+	// Take note of which pointers have been deleted
+	std::unordered_set<T> deleted;
+	std::list<capture_t<T>*> unknown_ptrs;
 	
-		T max_str_size = 0;
+	std::vector<bool> contains_captures;
+	std::vector<T> nodes_captures;
+	std::vector<const char*> str_captures;
+	std::vector<const char*> str_starts;
+	std::stack<T, std::vector<T>> warps;
+	std::stack<const char*, std::vector<const char*>> str_warps;
 
-		// ~10111111 = 01000000 (only select last second bit)
-		static constexpr T warp_mask = ~WARP_MASK;
-		// 1111111 >> 1 = 01111111
-		// ~0111111 = 10000000 (only select last bit)
-		static constexpr T semiwarp_mask = ~SEMIWARP_MASK;
-		// 0111111 (select all but last bit)
-		static constexpr T captures_mask = WARP_MASK;
+	std::unordered_set<T> nodes_data_captures;
 
-		T added_id=1;
+	std::queue<uint8_t> capture = std::queue<uint8_t>();
+	// Also, I could turn WARP_CAPTURES to int and add the ids only.
+	// capture end would be in last capture node + 1
 
-		// This will take the form of void* in positions 0..control_positions
-		// and of int in control_positions+1..node_length
+	T max_str_size = 0;
+
+	// ~10111111 = 01000000 (only select last second bit)
+	static constexpr T warp_mask = ~WARP_MASK;
+	// 1111111 >> 1 = 01111111
+	// ~0111111 = 10000000 (only select last bit)
+	static constexpr T semiwarp_mask = ~SEMIWARP_MASK;
+	// 0111111 (select all but last bit)
+	static constexpr T captures_mask = WARP_MASK;
+
+	T added_id=1;
+
+	// This will take the form of void* in positions 0..control_positions
+	// and of int in control_positions+1..node_length
+	#ifdef FRB_CONSTEXPR_DATA
+	static constexpr std::array<T, FRB_CONSTEXPR_DATA_LEN> data{FRB_CONSTEXPR_DATA};
+	#else
 		std::vector<T> data;
-		C_linked_list<uintptr_t> result_subgr;
+	#endif
+	std::vector<T> states;
+	C_linked_list<uintptr_t> result_subgr;
 
-		std::vector<uint_fast8_t> final_sizes;
+	std::vector<uint_fast8_t> final_sizes;
 
-		Mreg()
-		{
-			this->data = std::vector<T>(node_length * 2, 0);
-			this->data.reserve(reserved_data_size);
+	Mreg()
+	{
+#ifndef FRB_CONSTEXPR_DATA
+		this->data = std::vector<T>(node_length * 2, 0);
+		this->data.reserve(reserved_data_size);
+#endif
+		this->states = std::vector<T>();
 
-			this->contains_captures = std::vector<bool>();
-			this->nodes_captures = std::vector<T>();
-			this->str_captures = std::vector<const char *>();
-			this->str_starts = std::vector<const char *>();
-			this->warps = std::stack<T>();
-			this->str_warps = std::stack<const char *>();
+		this->contains_captures = std::vector<bool>();
+		this->nodes_captures = std::vector<T>();
+		this->str_captures = std::vector<const char *>();
+		this->str_starts = std::vector<const char *>();
+		this->warps = std::stack<T, std::vector<T>>();
+		this->str_warps = std::stack<const char *, std::vector<const char *>>();
 
-			this->nodes_data_captures = std::unordered_set<T>();
+		this->nodes_data_captures = std::unordered_set<T>();
 
-			this->contains_captures.push_back(false);
+		this->contains_captures.push_back(false);
 
-			printf("TEST1\n");
-			this->result_subgr = C_linked_list<uintptr_t>();
-			this->result_subgr.reserve();
-			printf("TEST2\n");
-		}
+		this->result_subgr = C_linked_list<uintptr_t>();
+		this->result_subgr.reserve();
+	}
 
 	~Mreg(){
+		#ifndef FRB_CONSTEXPR_DATA
 		this->delete_pointers();
+		#endif
 
 		// TODO: Find where any of these are deleted 
 		if(false && this->str_captures.size()){
@@ -248,6 +263,7 @@ class Mreg{
 		}
 	}
 
+	#ifndef FRB_CONSTEXPR_DATA
 	void delete_pointers(bool all = false){
 		#if !FRB_GENERATE
 		this->deleted = std::unordered_set<T> {};
@@ -340,6 +356,7 @@ class Mreg{
 		printf("\n###\n\n");
 		#endif
 	}
+	#endif
 
 	std::string str(const uint node=node_length){
 		std::string result = "[";
@@ -376,7 +393,7 @@ class Mreg{
 	// Generates a new node at the end of data and 
 	// returns it.
 	inline T new_node(){
-		T new_node = this->data.size();
+		T new_node = this->data.size() - offset_positions;
 		this->data.insert(this->data.end(), node_length, 0);
 
 		#if FRB_VERBOSE
@@ -394,7 +411,6 @@ class Mreg{
 		// to ensure no capture vector
 		// is placed in the wrong node
 		this->_clear_capture_vectors();
-
 	}
 	
 	void _clear_capture_vectors(){
@@ -507,10 +523,8 @@ class Mreg{
 				}
 			}
 		}
-		#if FRB_VERBOSE
+		
 		printf("### Size %zu -> %zu\n\n", max_size, this->data.size());
-		fflush(stdout);
-		#endif
 	}
 
 	void _move_captures(){
@@ -617,10 +631,10 @@ class Mreg{
 		printf("Serializing all %zu data pos... \n", this->data.size());
 		#endif
 		
-		const size_t data_size = this->data.size();
+		uintptr_t data_size = this->data.size();
 
-		out_stream.write(reinterpret_cast<char const*>(&data_size), sizeof(data_size));
-		out_stream.write(reinterpret_cast<char const*>(this->data.data()), data_size*sizeof(T));
+		out_stream.write(reinterpret_cast<char*>(&data_size), sizeof(data_size));
+		out_stream.write(reinterpret_cast<const char*>(this->data.data()), data_size*sizeof(T));
 
 		#if !FRB_CLEAN || FRB_VERBOSE
 		printf("[#] Data serialized.\n\n");
@@ -633,16 +647,22 @@ class Mreg{
 		#if FRB_VERBOSE
 		printf("Loading all ");
 		#endif
-		decltype(this->data.size()) size;
+		uintptr_t size = 0;
 		in_stream.read(reinterpret_cast<char *>(&size), sizeof(size));
 		
 		#if FRB_VERBOSE
-		printf("%zu data pos... ", size);
+		printf("%zu data pos...\n ", size);
 		#endif
 
 		this->data.resize(size);
-		in_stream.read(reinterpret_cast<char *>(this->data.data()), this->data.size() * sizeof(T));
-		this->data.resize(this->data.size());
+		{
+		std::vector<uintptr_t> tmp_data(size);
+
+		in_stream.read(reinterpret_cast<char *>(tmp_data.data()), tmp_data.size() * sizeof(uintptr_t));
+		
+		for(uintptr_t tmp : tmp_data)
+			this->data.push_back(static_cast<T>(tmp));
+		}
 
 		#if !FRB_CLEAN || FRB_VERBOSE
 		printf("[#] Data deserialized.\n\n");
@@ -654,6 +674,45 @@ class Mreg{
 		this->added_id = this->data[NUM_ADDED];
 
 		this->restore_captures();
+
+		return in_stream;
+	}
+
+	inline std::ostream& store_states(std::ostream& out_stream){
+		#if FRB_VERBOSE
+		printf("Serializing all %zu states... \n", this->states.size());
+		#endif
+		
+		uintptr_t states_size = this->states.size();
+
+		out_stream.write(reinterpret_cast<char*>(&states_size), sizeof(states_size));
+		out_stream.write(reinterpret_cast<const char*>(this->states.data()), states_size*sizeof(T));
+
+		#if !FRB_CLEAN || FRB_VERBOSE
+		printf("[#] States serialized.\n\n");
+		#endif
+
+		return out_stream;
+	}
+
+	inline std::istream& load_states(std::istream& in_stream){
+		#if FRB_VERBOSE
+		printf("Loading all ");
+		#endif
+		uintptr_t size = 0;
+		in_stream.read(reinterpret_cast<char *>(&size), sizeof(size));
+		
+		#if FRB_VERBOSE
+		printf("%zu states...\n ", size);
+		#endif
+
+		this->states.resize(size);
+		in_stream.read(reinterpret_cast<char *>(this->states.data()), this->states.size() * sizeof(T));
+		//this->data.resize(this->data.size());
+
+		#if !FRB_CLEAN || FRB_VERBOSE
+		printf("[#] States deserialized.\n\n");
+		#endif
 
 		return in_stream;
 	}
@@ -670,13 +729,60 @@ class Mreg{
 		return positions.back();
 	}
 
+	inline void generate_constexpr(std::ostream & out_stream){
+		#if FRB_VERBOSE
+		printf("Generating constexpr...\n");
+		#endif
+
+		std::string file = "#ifndef FRB_CONSTEXPR_DATA_H\n#define FRB_CONSTEXPR_DATA_H\n\n"
+						   "#define FRB_CONSTEXPR_DATA_LEN " +
+						   std::to_string(this->data.size()) + "\n\n";
+
+		file += "#define FRB_CONSTEXPR_DATA \\\n";
+
+		#define values_nl 5
+		for(uintptr_t i = 0; i != this->data.size(); ++i){
+			file += std::to_string(this->data[i]) + ", ";
+			if(i % values_nl == values_nl - 1)
+				file += "\\\n";
+		}
+
+		file += "\n\n#endif\n";
+
+		out_stream << file;
+	}
+
+	template<typename out_t>
+	inline void generate_constexpr(std::ostream & out_stream){
+		#if FRB_VERBOSE
+		printf("Generating constexpr...\n");
+		#endif
+
+		std::string file = "#ifndef FRB_CONSTEXPR_DATA_H\n#define FRB_CONSTEXPR_DATA_H\n\n"
+						   "#define FRB_CONSTEXPR_DATA_LEN " +
+						   std::to_string(this->data.size()) + "\n\n";
+
+		file += "#define FRB_CONSTEXPR_DATA \\\n";
+
+		#define values_nl 5
+		for(uintptr_t i = 0; i != this->data.size(); ++i){
+			file += std::to_string(static_cast<out_t>(this->data[i])) + ", ";
+			if(i % values_nl == values_nl - 1)
+				file += "\\\n";
+		}
+
+		file += "\n\n#endif\n";
+
+		out_stream << file;
+	}
+
 	void restore_captures(){
 		this->contains_captures.insert(
 				this->contains_captures.cend(), this->added_id+1, false);
 		const size_t max_size = this->data.size();
 
 		#if FRB_VERBOSE
-		printf("Restoring captures:\n");
+		printf("Restoring captures in %d positions:\n", max_size);
 
 		std::unordered_set<uint> seen = std::unordered_set<uint>();
 		#endif
@@ -684,7 +790,8 @@ class Mreg{
 		int captured_id;
 
 		for(uint node = node_length; node != max_size; node += node_length){
-			if(this->data[node] == CAPTURE_NODE){
+			if (this->data[node] == CAPTURE_NODE)
+			{
 				#if FRB_VERBOSE
 				printf("Node %u is a capture node\n", node);
 				#endif
@@ -1051,7 +1158,7 @@ class Mreg{
 		return 0;
 	}
 
-		uint match_and_subgroups(const char * str)
+	uint match_and_subgroups(const char * str)
 		# if !FRB_PROFILE
 		__attribute__ ((always_inline))
 		__attribute__ ((flatten))
@@ -1064,7 +1171,8 @@ class Mreg{
 		this->str_captures.clear();
 
 		#if FRB_VERBOSE
-		printf("match start %c, 0x%x\n", *str, this->data[mreg+*str+char_offset]);
+		printf("size %d\n", this->data.size());
+		printf("match start %c, 0x%x\n", *str, this->data[mreg + *str + char_offset]);
 
 		uint last_id = mreg;
 
@@ -1079,7 +1187,7 @@ class Mreg{
 
 		#if !PLAIN_FRB_MATCH
 		// If contains any captures in the initial node
-		if(this->data[mreg+WARP_CAPTURES]){
+		if(this->data[mreg+WARP_CAPTURES] & ~WARP_MASK){
 			#if FRB_VERBOSE
 			printf("Detected captures in node %u [%X]\n", mreg, this->data[mreg+WARP_CAPTURES]);
 			
@@ -1230,9 +1338,9 @@ end_loop:
 					group_start = this->str_starts.back();
 					this->str_starts.pop_back();
 					
-					pos_array[pos_index] = reinterpret_cast<uintptr_t>(
-						calloc(std::distance(group_start, *str_iter), sizeof(char))); 
-					memcpy((char *)pos_array[pos_index++], group_start, std::distance(group_start, *str_iter));
+					//pos_array[pos_index] = reinterpret_cast<uintptr_t>(
+					//	calloc(std::distance(group_start, *str_iter), sizeof(char))); 
+					//memcpy(static_cast<char *>(pos_array[pos_index++]), group_start, std::distance(group_start, *str_iter));
 
 					#if FRB_VERBOSE
 					printf(" End capture in char: %c\n", *print_iter);
@@ -1264,7 +1372,7 @@ end_loop:
 			for(const char* last_str : this->str_starts){
 				pos_array[pos_index] = reinterpret_cast<uintptr_t>(
 						calloc(std::distance(last_str, str), sizeof(char))); 
-				memcpy((char *)pos_array[pos_index++], last_str, std::distance(last_str, str));
+				//memcpy(static_cast<char *>(pos_array[pos_index++]), last_str, std::distance(last_str, str));
 
 				#if FRB_VERBOSE
 				printf("----%s-\n", pos_array[pos_index]);

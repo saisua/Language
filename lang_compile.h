@@ -10,10 +10,12 @@
 #define LANG_UTILS_FOLDER "utils//"
 #define LANG_OPTIMIZATIONS_FOLDER "Optimizations//"
 
-#define LANG_SYNTAX_TREE_FOLDER "tree//"
+#define LANG_SYNTAX_TREES_FOLDER "trees//"
 #define LANG_DEFINITION_CODES_FOLDER "codes//"
 #define LANG_DEFINITION_GENERATED_FOLDER "generated//"
 #define LANG_TRANSLATION_CODE_GROUPS_FOLDER "code_groups//"
+
+#define LANG_SYNTAX_STATE_CODES_FOLDER "state_codes//"
 
 // This should not be redefined.
 // However, just in case there is one case
@@ -21,13 +23,13 @@
 // semi-hardcode it here.
 #ifndef LANG_GEN_RENAME_FROM
 #define LANG_GEN_RENAME_FROM \
-    LANG_SYNTAX_PATH "%s.json", \
-    LANG_DEFINITION_PATH "%s.json"
+    {LANG_SYNTAX_PATH "%s.json"}, \
+    {LANG_DEFINITION_PATH "%s.json"}
 #endif
 #ifndef LANG_GEN_RENAME_TO
 #define LANG_GEN_RENAME_TO \
-    LANG_TRANSLATION_PATH "%s.json", \
-    LANG_LANGUAGE_PATH "%s.json"
+    {LANG_TRANSLATION_PATH "%s.json"}, \
+    {LANG_LANGUAGE_PATH "%s.json"}
 #endif
 #ifndef LANG_GEN_RENAME_OTHER
 #define LANG_GEN_RENAME_OTHER {}

@@ -10,10 +10,12 @@
 #define LANG_UTILS_FOLDER "utils//"
 #define LANG_OPTIMIZATIONS_FOLDER "Optimizations//"
 
-#define LANG_SYNTAX_TREE_FOLDER "tree//"
+#define LANG_SYNTAX_TREES_FOLDER "trees//"
 #define LANG_DEFINITION_CODES_FOLDER "codes//"
 #define LANG_DEFINITION_GENERATED_FOLDER "generated//"
 #define LANG_TRANSLATION_CODE_GROUPS_FOLDER "code_groups//"
+
+#define LANG_SYNTAX_STATE_CODES_FOLDER "state_codes//"
 
 // This should not be redefined.
 // However, just in case there is one case
@@ -21,13 +23,13 @@
 // semi-hardcode it here.
 #ifndef LANG_GEN_RENAME_FROM
 #define LANG_GEN_RENAME_FROM \
-    LANG_SYNTAX_PATH "%s.json", \
-    LANG_DEFINITION_PATH "%s.json"
+    {LANG_SYNTAX_PATH "%s.json"}, \
+    {LANG_DEFINITION_PATH "%s.json"}
 #endif
 #ifndef LANG_GEN_RENAME_TO
 #define LANG_GEN_RENAME_TO \
-    LANG_TRANSLATION_PATH "%s.json", \
-    LANG_LANGUAGE_PATH "%s.json"
+    {LANG_TRANSLATION_PATH "%s.json"}, \
+    {LANG_LANGUAGE_PATH "%s.json"}
 #endif
 #ifndef LANG_GEN_RENAME_OTHER
 #define LANG_GEN_RENAME_OTHER {}
@@ -58,11 +60,13 @@
 
 #endif
 
+#include  "languages//1-Syntax//trees//aucpp.tree.h"
+
 #include "languages//2-Definition//codes//aucpp.h"
 #include "languages//2-Definition//generated//aucpp.h"
 #include "languages//3-Translation//code_groups//mips.h"
 
-#include "languages//utils//var_handler//var_handler.h"
-#include "languages//utils//line_generation//line_gen_concat.h"
+#include "utils//var_handler//var_handler.h"
+#include "utils//line_generation//line_gen_concat.h"
 
 #define VAR_GEN \n

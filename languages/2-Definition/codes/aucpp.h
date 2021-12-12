@@ -1,42 +1,101 @@
 #ifndef LANG_DEFINITION_CODES_H
 #define LANG_DEFINITION_CODES_H
 
-#define standalones_while 30
-#define struct_start 2
-#define type_string 10
-#define type_float 8
-#define t_bool_operation_strict_not 19
-#define type_integer 9
-#define type_double 7
-#define t_bool_RBoolean 25
-#define type_character 6
-#define type_boolean 5
-#define t_bool_LBoolean 12
-#define compilerTag 4
-#define standalones_structStart 3
-#define t_bool_operation_strict_xor 24
-#define standalones_compilationInstr 1
-#define t_bool_operation_less_or_equal_than 15
-#define t_bool_operation_greater_than 14
-#define t_bool_operation_strict_not_equals 20
-#define t_bool_operation_greater_or_equal_than 13
-#define t_bool_operation_less_than 16
-#define t_bool_operation_strict_or 22
-#define t_bool_operation_strict_and 17
-#define t_bool_operation_strict_equals 18
-#define t_bool_operation_strict_not_same 21
-#define t_bool_operation_strict_same 23
-#define standalones_if 27
-#define standalones_function 11
-#define primitive_bool 26
-#define standalones_print 28
-#define standalones_varDefinition 29
-#define primitive 31
-#define t_bool_operation_strict 32
-#define t_bool_operation 33
-#define t_bool 34
-#define type 35
-#define struct 36
-#define standalones 37
+#define _code_t_bool 2048
+#define _code_t_bool_mask 4294965248
+
+#define _code_t_bool_operation 2112
+#define _code_t_bool_operation_mask 4294967232
+
+#define _code_t_bool_operation_strict 2056
+#define _code_t_bool_operation_strict_mask 4294967288
+
+#define _code_t_bool_operation_strict_same 2049
+
+#define _code_t_bool_operation_strict_not_same 2058
+
+#define _code_t_bool_operation_strict_equals 2059
+
+#define _code_t_bool_operation_strict_and 2060
+
+#define _code_t_bool_operation_strict_not_equals 2061
+
+#define _code_t_bool_operation_strict_xor 2062
+
+#define _code_t_bool_operation_strict_or 2063
+
+#define _code_t_bool_operation_strict_not 2056
+
+#define _code_t_bool_operation_less_than 2121
+
+#define _code_t_bool_operation_greater_or_equal_than 2122
+
+#define _code_t_bool_operation_greater_than 2123
+
+#define _code_t_bool_operation_less_or_equal_than 2124
+
+#define _code_standalones 4096
+#define _code_standalones_mask 4294965248
+
+#define _code_standalones_function 4224
+#define _code_standalones_function_mask 4294967232
+
+#define _code_primitive 6144
+#define _code_primitive_mask 4294965248
+
+#define _code_primitive_bool 6336
+#define _code_primitive_bool_mask 4294967232
+
+#define _code_standalones_print 4109
+
+#define _code_standalones_if 4110
+
+#define _code_primitive_double 6159
+
+#define _code_primitive_str 6160
+
+#define _code_standalones_compilationInstr 4113
+
+#define _code_standalones_structStart 4114
+
+#define _code_standalones_varDefinition 4115
+
+#define _code_t_bool_LBoolean 2068
+
+#define _code_struct 8192
+#define _code_struct_mask 4294965248
+
+#define _code_struct_start 8448
+#define _code_struct_start_mask 4294967232
+
+#define _code_primitive_char 6165
+
+#define _code_primitive_int 6166
+
+#define _code_primitive_float 6167
+
+#define _code_standalones_while 4120
+
+#define _code_type 10240
+#define _code_type_mask 4294965248
+
+#define _code_type_string 10560
+#define _code_type_string_mask 4294967232
+
+#define _code_type_integer 10265
+
+#define _code_type_float 10266
+
+#define _code_type_double 10267
+
+#define _code_t_bool_RBoolean 2076
+
+#define _code_type_character 10269
+
+#define _code_type_boolean 10270
+
+#define _code_compilerTag 12288
+#define _code_compilerTag_mask 4294965248
+
 
 #endif

@@ -1,8 +1,10 @@
 
 #include <string>
+#include <string_view>
 #include "codes//line_gen_codes.h"
 
-#define var_t char *
+#define var_t char*
+#define var_ct std::string_view
 #define var_t_null '\0'
 
 #ifndef var_container
@@ -28,5 +30,5 @@ void add_line(var_container<var_t> line){
             break;
         }
     }
-}\
+}
 */

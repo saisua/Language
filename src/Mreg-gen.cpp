@@ -8,6 +8,7 @@
 #endif
 
 // Local includes
+#include <set>
 #include "Mreg.cpp"
 
 
@@ -48,9 +49,14 @@ class Mreg_gen : public Mreg<T>{
 
 		std::unordered_map<T, branch_t<T>> added_final_branches;
 
-    public:
+
+	public:
 		std::unordered_map<std::string, T> added_ids;
 		std::unordered_map<std::string, T> added_nicknames;
+		std::unordered_map<std::string, branch_t<T>> final_nicknames;
+
+		std::set<T> all_states;
+		std::unordered_map<T, void*> tmp_states;
 
     Mreg_gen() : super(){
 		this->deleted = std::unordered_set<T>();
@@ -59,6 +65,10 @@ class Mreg_gen : public Mreg<T>{
 		this->added_ids = std::unordered_map<std::string, T>();
 		this->added_nicknames = std::unordered_map<std::string, T>();
 		this->added_final_branches = std::unordered_map<T, branch_t<T>>();
+		this->final_nicknames = std::unordered_map<std::string, branch_t<T>>();
+
+		this->tmp_states = std::unordered_map<T, void*>();
+		this->all_states = std::set<T>();
     }
 
     ~Mreg_gen(){
@@ -506,12 +516,27 @@ class Mreg_gen : public Mreg<T>{
 		this->analizer_generated = true;
 	}
 
-	T append(const char* expression, const char* nickname){
+	void clean_gen(){
+		this->clean();
+
+		//this->setup_states();
+	}
+
+	void store_gen(){
+		//this->store();
+
+	}
+
+	T append(const char* expression, const char* nickname, T id = 0){
 		if(!this->added_ids.count(expression)){
 			this->added_ids[expression] = this->added_id;
 
 			T last_added_id = 0;
 			if(! this->added_nicknames.count(nickname)){
+				if(id != 0){
+					last_added_id = this->added_id;
+					this->added_id = id;
+				}
 				printf(" New nickname [id:%lu]: %s\n", this->added_id, nickname);
 
 				this->added_nicknames[nickname] = this->added_id;
@@ -535,6 +560,8 @@ class Mreg_gen : public Mreg<T>{
 
 			this->added_final_branches[this->added_id-1].insert(
 														branches.begin(), branches.end());
+
+			this->final_nicknames[std::string(nickname)] = this->added_final_branches[this->added_id-1];
 
 			T aux = this->added_id;
 			if(last_added_id)
@@ -1007,6 +1034,32 @@ testing_do_not_generate:
 
 		return branches;
 	} 
+
+	std::unordered_map<T, void*> * append_state(T state){
+		if(this->tmp_states.count(state)){
+			return static_cast<std::unordered_map<T, void*>*>(this->tmp_states[state]);
+		}
+		else{
+			std::unordered_map<T, void *> * new_state = new std::unordered_map<T, void *>();
+
+			this->tmp_states[state] = static_cast<void *>(new_state);
+
+			return new_state;
+		}
+	}
+
+	std::unordered_map<T, void*> * append_state(std::unordered_map<T, void*> * node, T state){
+		if(node->count(state)){
+			return static_cast<std::unordered_map<T, void*>*>(node->at(state));
+		}
+		else{
+			std::unordered_map<T, void *> * new_state = new std::unordered_map<T, void *>();
+
+			node->at(state) = static_cast<void *>(new_state);
+
+			return new_state;
+		}
+	}
 
 	// Append inline sub-functions
 	inline uint append_letter(const uint node, const char* expr, bool regexpr=false, const uint to=0){
@@ -1963,6 +2016,63 @@ testing_do_not_generate:
 			#endif
 		}
 
+	}
+
+	void setup_states(){
+		if(this->tmp_states.size() == 0)
+			return;
+		size_t n_states = this->tmp_states.size();
+		this->states.insert(this->data.end(), n_states, 0);
+
+		// We add all states
+		std::stack<std::unordered_map<T, void *> *> search{{
+			static_cast<std::unordered_map<T, void *> *>(this->tmp_states[0])
+		}};
+		std::stack<uint_fast16_t> seen {{0}};
+
+		printf("Got :\n");
+		T tmp_state = 0;
+		T current_state = 0;
+		while (!search.empty())
+		{
+			printf("%d remaining - ", search.size());
+			fflush(stdout);
+			if (search.top()->begin() != search.top()->end())
+			{
+				printf("useful\n");
+				auto tmp_it = search.top()->begin();
+				for (int i = 0; i != seen.top(); ++i, tmp_it++)
+					;
+				auto it = *(tmp_it);
+				++seen.top();
+				tmp_state = it.first;
+
+				// Should be an if, but since time is not a problem, just in case
+				// Actually I think this will never go in
+				while(current_state + tmp_state > this->states.size() - 1)
+					[[unlikely]]
+					this->states.insert(this->data.end(), n_states, 0);
+
+				// if exists
+				if(! this->states[current_state + tmp_state]){
+					this->states[current_state + tmp_state] = this->states.size();
+					this->states.insert(this->data.end(), n_states, 0);
+				}
+
+				current_state = this->states[current_state + tmp_state];
+
+				seen.emplace(0);
+				search.emplace(static_cast<std::unordered_map<T, void *> *>(it.second));
+
+				if (search.top()->size() >= seen.top())
+					search.pop();
+			}
+			else
+			{
+				printf("empty\n");
+				search.pop();
+			}
+		}
 	}
 };
 

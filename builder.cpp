@@ -12,7 +12,6 @@
 #include <array>
 #include <regex>
 #include <utility> 
-#include <json11.hpp>
 
 // External includes
 #include <json11.hpp>
@@ -55,7 +54,9 @@ int main(int argc, const char * argv[]){
     {
     std::string err = "";
 
-    for(std::string path : {LANG_GEN_RENAME_FROM}){
+    std::vector<std::string> from_path = {LANG_GEN_RENAME_FROM};
+    for (std::string path : from_path)
+    {
         printf("Reading file: %s\n", path.c_str());
         files.push_back(json11::Json::parse(
                     read_str_file(
@@ -63,7 +64,8 @@ int main(int argc, const char * argv[]){
                     ), err));
     }
 
-    for(std::string path : {LANG_GEN_RENAME_TO}){
+    std::vector<std::string> to_path = {LANG_GEN_RENAME_TO};
+    for(std::string path : to_path){
         printf("Reading file: %s\n", path.c_str());
         files.push_back(json11::Json::parse(
                     read_str_file(
@@ -75,6 +77,7 @@ int main(int argc, const char * argv[]){
     std::string compile_info = read_str_file("lang_compile.h");
     compile_info += "\n\n";
     compile_info += read_str_file("src/generated_tag_list.h");
+    compile_info += "\n\n#include  \"" LANG_SYNTAX_PATH LANG_SYNTAX_TREES_FOLDER LANG_FROM ".tree.h\"";
 
     // Clean current_lang
     std::ofstream current_lang;
@@ -82,14 +85,21 @@ int main(int argc, const char * argv[]){
     current_lang << compile_info + "\n\n";
     current_lang.close();
 
-    printf("(1/4) Generate syntax\n");
-    generate_syntax(generated_matcher);
-    printf("(2/4) Generate codes\n");
+    printf("(1/5) Generate syntax\n");
+    generate_syntax(generated_matcher, files[0]);
+    printf("(2/5) Generate codes\n");
     generate_codes(generated_matcher);
-    printf("(3/4) Generate checks\n");
+    //generate_states(generated_matcher, files);
+    printf("(3/5) Generate checks\n");
     generate_definition_checks(generated_matcher, files);
-    printf("(4/4) Resolve dependencies\n");
+    printf("(4/5) Resolve dependencies\n");
     generate_utils_dependencies(files);
+    printf("(5/5) Generate compile time syntax tree\n");
+    generated_matcher.clean_gen();
+    std::ofstream constexpr_syntax;
+    constexpr_syntax.open(LANG_SYNTAX_PATH LANG_SYNTAX_TREES_FOLDER LANG_FROM ".tree.h", std::ios::out);
+    generated_matcher.generate_constexpr<uint16_t>(constexpr_syntax);
+    printf("[ DONE ]\n");
 
     return 0;
 }

@@ -4,6 +4,9 @@
 #include <fstream>
 #include <string>
 #include <json11.hpp>
+#include <cmath>
+#include <limits>
+#include <algorithm>
 
 #include "Mreg-gen.cpp"
 #include "../lang_compile.h"
@@ -12,6 +15,11 @@
 #include "regex_perm.cpp"
 #include "language_gen.cpp"
 
+
+// We must have a prefix in case we collide
+// with other generated definitions of gcc
+// since we should not have lower case definitions
+#define code_pref "_code_"
 
 std::string read_str_file(const std::string& filename);
 json11::Json get_object_from_path(json11::Json & doc, const std::string & path);
@@ -22,6 +30,12 @@ std::vector<std::string> get_recursive_strings(json11::Json &doc, const std::str
 void solve_code(std::string & code, json11::Json & doc);
 void prettify_definition(std::string & definition);
 void prettify_definition(char * definition);
+void update_mreg(Mreg_gen<uintptr_t> &mreg, std::string nickname, uintptr_t new_code);
+
+#define bits(len) ceil(log2(len))
+#define num_bits(type) std::numeric_limits<type>::digits
+
+std::unordered_set<std::string> max_depth_codes;
 
 inline void generate_codes(Mreg_gen<uintptr_t> & data){
     std::fstream out;
@@ -43,38 +57,268 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
     }
 
     printf("Got %d nicknames\n", data.added_nicknames.size());
-    std::unordered_set<std::string> parents = std::unordered_set<std::string>();
+    std::unordered_map<uint, std::unordered_set<std::string>> codes = 
+                std::unordered_map<uint, std::unordered_set<std::string>>();
+    std::unordered_map<std::string, std::string> parents = 
+                std::unordered_map<std::string, std::string>();
+
+    uint max_depth = 0;
+    for (auto nickname_pair : data.added_nicknames)
+    {
+        uint total_depth = count(nickname_pair.first.begin(), nickname_pair.first.end(), '_');
+
+        if(total_depth > max_depth)
+            max_depth = total_depth;
+    }
 
     for(auto nickname_pair : data.added_nicknames){
         std::string nickname = nickname_pair.first;
 
-        std::string::iterator reverse_nick = nickname.begin();
-        for (uint letter = 0; letter != nickname.length(); ++letter){
-            if (*reverse_nick == '_')
-               parents.emplace(nickname.substr(0, letter));
-            ++reverse_nick;
+        std::string::iterator nick = nickname.begin();
+        std::string last = "";
+        std::stack<std::string> codes_stack = std::stack<std::string>();
+        for (uint letter = 0; letter != nickname.length(); ++letter)
+        {
+            if (*nick == '_'){
+
+                std::string current = nickname.substr(0, letter);
+                codes_stack.emplace(current);
+
+                if (!parents.count(current) && last.length())
+                {
+                    parents[current] = last;
+                }
+
+                last.assign(current);
+            }
+            ++nick;
         }
 
-        printf("Added nickname %s\n", nickname.c_str());
+        uint depth = count(nickname.begin(), nickname.end(), '_');
+        codes_stack.emplace(nickname);
+        while(!codes_stack.empty()){
+
+            if(! codes.count(depth)){
+                codes[depth] = std::unordered_set<std::string>{codes_stack.top()};
+                
+                printf(" Added in depth %d : %s\n", depth, codes_stack.top().c_str());
+            }
+            else{
+                // This if is only for printing unique nicknames
+                if(!codes[depth].count(codes_stack.top())){
+                    codes[depth].emplace(codes_stack.top());
+                    printf(" Added in depth %d : %s\n", depth, codes_stack.top().c_str());
+                }
+            }
+
+            --depth;
+            codes_stack.pop();
+        }
     
-        prettify_definition(nickname);
-        std::string line = ("#define " + nickname + " " 
-                            + std::to_string(nickname_pair.second) + "\n");
-        
-        out.write(line.c_str(), line.length());
+        if(last.length())
+            parents[nickname] = last;
     }
     uint id = data.added_nicknames.size();
 
-    printf(" from parents:\n");
-    for(std::string parent : parents){
-        if(! data.added_nicknames.count(parent)){
-            printf("  %s\n", parent.c_str());
+    using bit_t = uint;
+
+    std::unordered_map<std::string, std::vector<bit_t>> added = 
+                std::unordered_map<std::string, std::vector<bit_t>>();
+    std::unordered_map<uint, uint> s_bits = 
+                std::unordered_map<uint, uint>();
+    std::unordered_map<uint, uint> starting_bit =
+                std::unordered_map<uint, uint>();
+    std::unordered_map<uint, uint> current_id = 
+                std::unordered_map<uint, uint>();
+
+
+    s_bits[max_depth] = bits(codes[max_depth].size());
+    starting_bit[max_depth] = 0;
+    current_id[max_depth] = 0;
+
+    printf("Setup depth %d(%d,0) ",max_depth, s_bits[max_depth]);
+    for (int code_depth = max_depth - 1; code_depth != -1; --code_depth)
+    {
+        s_bits[code_depth] = bits(codes[code_depth].size()) + s_bits[code_depth + 1];
+        starting_bit[code_depth] = s_bits[code_depth + 1];
+        current_id[code_depth] = 0;
+        printf("%d(%d,%d) ", code_depth, s_bits[code_depth], starting_bit[code_depth]);
+
+    }
+    printf("\n");
+
+    // We add all codes to the map, in binary sectors.
+    // LSB is depth 0, but the highest depth in the json
+    printf("Added codes:\n");
+    for(int code_depth = max_depth; code_depth != -1; --code_depth){
+        for(std::string code : codes[code_depth]){
+            // Add the code to the int, starting by the position.
+            // so
+            // we access the vector[(size_t) bit_depth / num_bits(bit_t)]
+            // and we add the code.
+            // We also add bit_depth to the amount of bits used.
+
+            // We get the parents by going up the tree.
+            std::stack<std::string> parents_stack = std::stack<std::string>();
+            std::string current = code;
+            printf("Looking up from %s\n", current.c_str());
+            uint tmp_depth = max_depth;
+            while(parents.count(current) && ! added.count(current)){
+                parents_stack.emplace(current);
+                current = parents[current];
+                printf("  found parent %s\n", current.c_str());
+
+                --tmp_depth;
+            }
             
-            prettify_definition(parent);
-            std::string line = ("#define " + parent + " " 
-                                + std::to_string(++id) + "\n");
+            if(added.count(current)){
+                printf("   (seen)\n");
+            }
+            else{
+                tmp_depth = 0;
+                printf("   (root)\n");
+                added[current] = std::vector<bit_t>();
+
+                size_t pos = (size_t) s_bits[tmp_depth] / num_bits(bit_t);
+
+
+                printf("  adding id %s [%d] with id ", current.c_str(), pos);
+
+                while(added[current].size() <= pos)
+                    added[current].emplace_back(0);
+
+                // First check if the bits will be cut when adding to the int.
+                size_t displacement = (size_t) 
+                                        (starting_bit[tmp_depth] >= (num_bits(bit_t) * pos)) 
+                                        * (starting_bit[tmp_depth] % num_bits(bit_t));
+                added[current][pos] |= ((++current_id[tmp_depth]) << displacement);
+                printf("%d << %d, depth %d\n", current_id[tmp_depth], displacement, tmp_depth);
+
+                std::string printed = std::string(current);
+                prettify_definition(printed);
+                out << "#define "code_pref << printed << " ";
+                std::string code = "";
+                if(added[current].size() > 1)
+                    code += "{";
+                for(bit_t bit : added[current]){
+                    code += std::to_string(bit) + ",";
+                }
+                code.pop_back();
+
+                if(added[current].size() > 1)
+                    code += "}";
+
+                out << code << "\n";
+
+                out << "#define "code_pref << printed << "_mask ";
+                code = "";
+                if(added[current].size() > 1)
+                    code += "{";
+                for (int f = added[current].size() - 1; f != -1; --f)
+                {
+                    // If we are in a parent
+                    if(s_bits[tmp_depth] < num_bits(bit_t) * f){
+                        code += std::to_string(std::numeric_limits<bit_t>::max()) + ",";
+                    // If we are in a child
+                    } else if(starting_bit[tmp_depth] >= num_bits(bit_t) * (f+1)){
+                        code += "0,";
+                        // If we are in an important bit
+                    } else {
+                        if(displacement == 0){
+                            code += std::to_string(std::numeric_limits<bit_t>::max()) + ",";
+                        } else {
+                            code += std::to_string(~((bit_t)pow(2, displacement)-1)) + ",";
+                        }
+                    }
+                }
+                code.pop_back();
+
+                if(added[current].size() > 1)
+                    code += "}";
+
+                out << code << "\n\n";
+
+                if(data.added_nicknames.count(current))
+                    update_mreg(data, current, added[current][0]);
+            }
+
+            ++tmp_depth;
+            std::vector<bit_t> last_added = added[current];
+            while (!parents_stack.empty())
+            {
+                current = parents_stack.top();
+                parents_stack.pop();
             
-            out.write(line.c_str(), line.length());
+                printf("  adding id %s with id ", current.c_str());
+
+                size_t pos = (size_t) s_bits[tmp_depth] / num_bits(bit_t);
+                added[current] = std::vector<bit_t>();
+                added[current].assign(last_added.begin(), last_added.end());
+                last_added = added[current];
+
+                while(added[current].size() <= pos)
+                    added[current].emplace_back(0);
+
+                size_t displacement = (size_t) 
+                                        (starting_bit[tmp_depth] >= (num_bits(bit_t) * pos)) 
+                                        * (starting_bit[tmp_depth] % num_bits(bit_t));
+                added[current][pos] |= ((++current_id[tmp_depth]) << displacement);
+                printf("%d << %d, depth %d\n", current_id[tmp_depth], displacement, tmp_depth);
+
+                std::string printed = std::string(current);
+                prettify_definition(printed);
+                out << "#define "code_pref << printed << " ";
+                std::string code = "";
+                if(added[current].size() > 1)
+                    code += "{";
+                for(bit_t bit : added[current]){
+                    code += std::to_string(bit) + ",";
+                }
+                code.pop_back();
+                if(added[current].size() > 1)
+                    code += "}";
+                out << code << "\n";
+
+                // It has to be prettified.
+                if (tmp_depth == max_depth)
+                {
+                    max_depth_codes.emplace(printed);
+                }
+                else
+                {
+                    out << "#define "code_pref << printed << "_mask ";
+                    code = "";
+                    if(added[current].size() > 1)
+                        code += "{";
+                    for (int f = added[current].size() - 1; f != -1; --f)
+                    {
+                        // If we are in a parent
+                        if(s_bits[tmp_depth] < num_bits(bit_t) * f){
+                            code += std::to_string(std::numeric_limits<bit_t>::max()) + ",";
+                        // If we are in a child
+                        } else if(starting_bit[tmp_depth] >= num_bits(bit_t) * (f+1)){
+                            code += "0,";
+                            // If we are in an important bit
+                        } else {
+                            if(displacement == 0){
+                                code += std::to_string(std::numeric_limits<bit_t>::max()) + ",";
+                            } else {
+                                code += std::to_string(~((bit_t)pow(2, displacement)-1)) + ",";
+                            }
+                        }
+                    }
+                    code.pop_back();
+                    if(added[current].size() > 1)
+                        code += "}";
+                    out << code << "\n";
+                }
+                out << '\n';
+
+                if(data.added_nicknames.count(current))
+                    update_mreg(data, current, added[current][0]);
+
+                ++tmp_depth;
+            }
         }
     }
 
@@ -84,6 +328,17 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
     }
 
     out.close();
+}
+
+void update_mreg(Mreg_gen<uintptr_t> &mreg, std::string nickname, uintptr_t new_code){
+    mreg.added_nicknames[nickname] = new_code;
+
+    for (uintptr_t branch : mreg.final_nicknames[nickname])
+    {
+        mreg.data[branch + FINAL] = new_code;
+    }
+
+    mreg.all_states.insert(new_code);
 }
 
 inline void generate_definition_checks(Mreg_gen<uintptr_t> & data, 
@@ -186,15 +441,44 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
         json11::Json active_def = get_object_from_path(definition, nickname_pair.first);
         json11::Json active_trans = get_object_from_path(translation, nickname_pair.first);
         
-        if(active_trans.is_null() || active_def.is_null()){
-            printf("Not found %s in any of the files\n\n", nickname_pair.first.c_str());
+        if(active_trans.is_null()// && active_def.is_null()
+                                    ){
+            printf("Not found %s in any of the files (%d,%d)\n\n", nickname_pair.first.c_str(),
+                                                    //active_def.is_null(), 
+                                                    active_trans.is_null());
             continue;
         }
+        else if(active_trans.is_null()){
+            // So that at least matches
+            switch_cases += "case " + nickname_pair.first + ": \\\n\tbreak; \\\n";
+        }
 
-        printf("Got object from definition and translation:\n  %s\n\n", 
-                                                        nickname_pair.first.c_str());
+        printf("\nGot object of type ");
+        switch(active_trans.type()){
+            case json11::Json::BOOL:
+                printf("Bool");
+                break;
+            case json11::Json::STRING:
+                printf("String");
+                break;
+            case json11::Json::NUMBER:
+                printf("Number");
+                break;
+            case json11::Json::ARRAY:
+                printf("Array");
+                break;
+            case json11::Json::OBJECT:
+                printf("Object");
+                break;
+            default:
+                break;
+        }
+        printf(" from translation:\n  %s\n", nickname_pair.first.c_str());
 
-        switch_cases += ("case " + nickname_pair.first + ": \\\n");
+        std::string case_id = std::string(nickname_pair.first);
+
+        prettify_definition(case_id);
+        switch_cases += ("case "code_pref + case_id +": \\\n");
         bool first_in_switch = true;
 
         // Check for sub-group types
@@ -293,18 +577,24 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
                     translation_code += "#define translation_" + print_path;
 
-                    translation_code += " \\\n\tadd_line({";
                     // I have to think if there is any way of generating any other
                     // code that is not from language. Maybe from trans??
-                    for(std::string & final_code : get_recursive_strings(
-                                                        files[final_id-1], 
-                                                        get_path(lang_path, final_id))){
+                    std::string tmp_code = "";
+                    for (std::string &final_code : get_recursive_strings(
+                                                                files[final_id - 1],
+                                                                get_path(lang_path, final_id)))
+                    {
                         solve_code(final_code, language_patterns, language);
 
-                        translation_code += " \\\n\t\"" + final_code + "\",";
+                        tmp_code += " \\\n\t\"" + final_code + "\",";
                     }
-                    translation_code.pop_back();
-                    translation_code += "})\n";
+                    tmp_code.pop_back();
+
+                    uint code_size = std::count(tmp_code.begin(), tmp_code.end(), '\n');
+
+                    translation_code += " \\\n\tadd_line<"+
+                                            std::to_string(code_size)+
+                                            ">({" + tmp_code + "})\n";
                 }
 
                 // There should always be depth > 0, but just in case
@@ -423,10 +713,8 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                     else
                         switch_cases += "else if(";
 
-                    if(set_pos)
-                        switch_cases += "(pos = ";
 
-                    switch_cases += "data[";
+                    switch_cases += "data[data[";
 
                     std::vector<std::string> found_sub_conditions {};
 
@@ -437,6 +725,8 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                         last = pos+1;
                     }
 
+
+                    std::string sub_condition = "";
                     // Fail when sub-conditions:
                     // Since the sub-condition is based on a sub-node,
                     // the path from nickname_pair.first is not valid.
@@ -459,10 +749,8 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                             else
                                 first = false;
 
-                            std::string sub_condition = "";
-
-                            if (active_path.rfind("standalones", 0) == 0)
-                                sub_condition += "definition_";
+                            //if (active_path.rfind("standalones", 0) == 0)
+                            sub_condition += "definition_";
                             sub_condition += active_path + "_" + *rit;
 
                             prettify_definition(sub_condition);
@@ -475,22 +763,18 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                         else*/
                         switch_cases += "pos";
 
-                        switch_cases += std::string(found_sub_conditions.size(), ']');
+                        switch_cases += std::string(found_sub_conditions.size()-1, ']');
                     } else {
-                        std::string full_cond_end = "";
-                        if (active_path.rfind("standalones", 0) == 0)
-                            full_cond_end += "definition_";
+                        //if (active_path.rfind("standalones", 0) == 0)
+                        sub_condition += "definition_";
                                 
-                        full_cond_end += active_path + "_" + condition;
+                        sub_condition += active_path + "_" + condition;
 
-                        prettify_definition(full_cond_end);
-                        switch_cases += full_cond_end + " + pos]";
+                        prettify_definition(sub_condition);
+                        switch_cases += sub_condition + " + pos";
                     }
 
-                    if(set_pos)
-                        switch_cases += ")";
-
-                    switch_cases += " == ";
+                    switch_cases += "]] ";
 
                     std::string path;
                     std::smatch match;
@@ -505,7 +789,14 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                             // + path] == x){ ???
 
                             prettify_definition(path);
-                            switch_cases += path + "){ \\\n" + std::string(depth + 2, '\t') + "pos = root; \\\n";
+
+                            // If it is a parent (not max depth) I need to & slice the id 
+                            if( ! max_depth_codes.count(path))
+                                switch_cases += "& "code_pref + path + "_mask == ";
+                            else
+                                switch_cases += "== ";
+
+                            switch_cases += code_pref + path + "){ \\\n" + std::string(depth + 2, '\t') + "pos = root; \\\n";
 
                             break;
                             
@@ -517,7 +808,14 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                             path_seen.push(path);
 
                             prettify_definition(path);
-                            switch_cases += path + "){ \\\n";
+
+                            // If it is a parent (not max depth) I need to & slice the id 
+                            if( ! max_depth_codes.count(path))
+                                switch_cases += "& "code_pref + path + "_mask == ";
+                            else
+                                switch_cases += "== ";
+
+                            switch_cases += code_pref + path + "){ \\\n";
 
                             break;
 
@@ -532,7 +830,14 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                                 path = get_path(group_pair.first.substr(new_path.size() + 2), id);
 
                                 prettify_definition(path);
-                                switch_cases += path + "){ \\\n";
+
+                                // If it is a parent (not max depth) I need to & slice the id 
+                                if( ! max_depth_codes.count(path))
+                                    switch_cases += "& "code_pref + path + "_mask == ";
+                                else
+                                    switch_cases += "== ";
+
+                                switch_cases += code_pref + path + "){ \\\n";
 
                                 break;
                             }
@@ -542,53 +847,22 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                             path = get_path(group_pair.first, id);
 
                             prettify_definition(path);
-                            switch_cases += path +"){ \\\n";
+
+                            // If it is a parent (not max depth) I need to & slice the id 
+                            if( ! max_depth_codes.count(path))
+                                switch_cases += "& "code_pref + path + "_mask == ";
+                            else
+                                switch_cases += "== ";
+
+                            switch_cases += code_pref + path +"){ \\\n";
 
                             path_seen.push(active_path);
                             break;
-                        }
-
-                        /*
-                    json11::Json attribute = get_object_from_path(
-                            files[id-1],
-                            get_path(group_pair.first, id)
-                        );
-                    
-                     I think i messed up. I only need id
-                    // What to do in case it is an object?
-                    if(attribute.is_string()){
-                        printf("Added if clausule\n");
-
-                        if(! seen ){
-                            // Add if
-                            switch_cases += ("if(" + condition + " == "
-                                                + attribute.string_value() +"){ \\\n");
-                        } else {
-                            // Add else if
-                            switch_cases += ("else if(" + condition + " == "
-                                                + attribute.string_value() +"){ \\\n");
-                        }
-                    } else if(attribute.is_array()){
-                        printf("Added array if clausules\n");
-
-                        switch_cases += "if(";
-
-                        bool first = true;
-                        for(auto & value : attribute.array_items()){
-                            if(! first){
-                                switch_cases += " || \\\n\t";
-                            } else {
-                                first = false;
-                            }
-                                
-                            switch_cases += (condition + " == \"" + value.string_value() + "\"");
-                        }
-
-                        switch_cases += "){ \\\n";
-                    } else {
-                        printf("Unknown value of type %d\n", attribute.type());
                     }
-                    */
+
+
+                    if(set_pos)
+                        switch_cases += std::string(depth + 2, '\t') + "pos = data[" + sub_condition + " + pos]; \\\n";
 
                         ++depth;
                     }
@@ -628,7 +902,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
     out.close();
 
-    current_language_path = "code_groups//" LANG_TO ".h";
+    current_language_path = LANG_TRANSLATION_PATH "code_groups//" LANG_TO ".h";
     
     current_language.open(LANG_LANGUAGES_FOLDER "current_language.h", std::ios_base::app);
     current_language << "#include \"";

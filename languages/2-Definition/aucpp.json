@@ -42,7 +42,7 @@
     "_sub_comment3":"#t-bool# in the process",
 
     "sub-bool": "%t-bool_Boolean%",
-    "t_bool":{
+    "t-bool":{
         "data-1":{
             "groups":0,
             "type":"bool"

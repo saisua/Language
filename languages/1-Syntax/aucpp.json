@@ -143,8 +143,8 @@
         ],
         "compilationInstr":"#([^\\s].*)",
         "print":[
-            "print\\((.*?)\\)",
-            "print\\s+(.*?)"
+            "print\\(%primitive%\\)",
+            "print\\s+%primitive%"
         ],
         "structStart":"%struct_start%"
     }

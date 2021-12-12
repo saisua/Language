@@ -13,14 +13,15 @@
 // Apply all lines and "sew" them correctly
 // call language_optimize()
 
+#include <filesystem>
 #include <vector>
 #include <string>
 #include <fstream>
 #include "src/utils/file_read.cpp"
-#include "src/Mreg.cpp"
 #include "src/utils/cllist.cpp"
 
 #include "languages/current_language.h"
+#include "src/Mreg.cpp"
 
 
 #define var_container std::vector
@@ -33,32 +34,39 @@ void def_trans_optimize();
 void trans_lang_optimize();
 void language_optimize();
 */
-void add_line(var_container<var_t> lines)
-	__attribute__((always_inline));
+template<int size>
+constexpr void add_line(std::array<var_ct, size> lines)
+    __attribute__((always_inline));
 
 int main(int argc, char const *argv[]) {
-    if(argc < 1){
+    if(argc < 2){
         printf("Minimal usage: compile <filename>");
         return -1;
     }
 
     std::fstream tree;
-    tree.open(LANG_LANGUAGES_FOLDER 
-                LANG_SYNTAX_PATH 
-                LANG_SYNTAX_TREE_FOLDER
+    tree.open(LANG_SYNTAX_PATH 
+                LANG_SYNTAX_TREES_FOLDER
                 LANG_FROM
                 ".tree"
                 , std::ios::in);
 
-    Mreg<uint_fast32_t> mreg = Mreg<uint_fast32_t>();
-    mreg.load(tree);
-    tree.close();
+    using mreg_t = uintptr_t;
+    Mreg<mreg_t> mreg = Mreg<mreg_t>();
+    //printf("Loading syntax tree in %s\n", LANG_SYNTAX_PATH 
+    //                                        LANG_SYNTAX_TREES_FOLDER
+    //                                        LANG_FROM
+    //                                        ".tree");
+    //mreg.load(tree);
+    //tree.close();
 
     std::string file = read_str_file(argv[1]);
+
+    printf("Matching file %s\n", argv[1]);
     // This does only accept only one line
     mreg.match_and_subgroups(file.c_str());
 
-    uint_fast32_t path = 0, pos = 0;
+    mreg_t path = 0, pos = 0;
     C_linked_list<uintptr_t> & data = mreg.result_subgr;
 
     switch(data[0]){
@@ -68,8 +76,9 @@ int main(int argc, char const *argv[]) {
     return 0;
 }
 
-void add_line(var_container<var_t> lines){
-	for(var_t & v : lines){
-		printf("%s\n", v);
-	}
+template<int size>
+constexpr void add_line(std::array<var_ct, size> lines){
+    for (auto sv : lines) {
+        printf("%s\n", sv);
+    }
 }

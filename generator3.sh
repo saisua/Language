@@ -1,1 +1,3 @@
-g++ -o language -std=c++20 -O3 -ffast-math -march=native generator.cpp -lstdc++ $@
+g++ -o language -std=c++20 -Ofast -fprofile-arcs \
+        -floop-parallelize-all -floop-nest-optimize \
+        -march=native generator.cpp -lstdc++ $@
