@@ -41,7 +41,7 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
     std::fstream out;
     std::fstream current_language;
 
-    std::string current_language_path = LANG_DEFINITION_PATH "codes//" LANG_FROM ".h";
+    std::string current_language_path = LANG_DEFINITION_FOLDER "codes//" LANG_FROM ".h";
 
     current_language.open(LANG_LANGUAGES_FOLDER "current_language.h", std::ios_base::app);
     current_language << "#include \"";
@@ -196,7 +196,7 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
 
                 std::string printed = std::string(current);
                 prettify_definition(printed);
-                out << "#define "code_pref << printed << " ";
+                out << "#define " code_pref << printed << " ";
                 std::string code = "";
                 if(added[current].size() > 1)
                     code += "{";
@@ -210,7 +210,7 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
 
                 out << code << "\n";
 
-                out << "#define "code_pref << printed << "_mask ";
+                out << "#define " code_pref << printed << "_mask ";
                 code = "";
                 if(added[current].size() > 1)
                     code += "{";
@@ -267,7 +267,7 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
 
                 std::string printed = std::string(current);
                 prettify_definition(printed);
-                out << "#define "code_pref << printed << " ";
+                out << "#define " code_pref << printed << " ";
                 std::string code = "";
                 if(added[current].size() > 1)
                     code += "{";
@@ -286,7 +286,7 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
                 }
                 else
                 {
-                    out << "#define "code_pref << printed << "_mask ";
+                    out << "#define " code_pref << printed << "_mask ";
                     code = "";
                     if(added[current].size() > 1)
                         code += "{";
@@ -478,7 +478,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
         std::string case_id = std::string(nickname_pair.first);
 
         prettify_definition(case_id);
-        switch_cases += ("case "code_pref + case_id +": \\\n");
+        switch_cases += ("case " code_pref + case_id +": \\\n");
         bool first_in_switch = true;
 
         // Check for sub-group types
@@ -792,7 +792,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
                             // If it is a parent (not max depth) I need to & slice the id 
                             if( ! max_depth_codes.count(path))
-                                switch_cases += "& "code_pref + path + "_mask == ";
+                                switch_cases += "& " code_pref + path + "_mask == ";
                             else
                                 switch_cases += "== ";
 
@@ -811,7 +811,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
                             // If it is a parent (not max depth) I need to & slice the id 
                             if( ! max_depth_codes.count(path))
-                                switch_cases += "& "code_pref + path + "_mask == ";
+                                switch_cases += "& " code_pref + path + "_mask == ";
                             else
                                 switch_cases += "== ";
 
@@ -833,7 +833,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
                                 // If it is a parent (not max depth) I need to & slice the id 
                                 if( ! max_depth_codes.count(path))
-                                    switch_cases += "& "code_pref + path + "_mask == ";
+                                    switch_cases += "& " code_pref + path + "_mask == ";
                                 else
                                     switch_cases += "== ";
 
@@ -850,7 +850,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
                             // If it is a parent (not max depth) I need to & slice the id 
                             if( ! max_depth_codes.count(path))
-                                switch_cases += "& "code_pref + path + "_mask == ";
+                                switch_cases += "& " code_pref + path + "_mask == ";
                             else
                                 switch_cases += "== ";
 
@@ -878,7 +878,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
     std::fstream current_language;
 
-    std::string current_language_path = LANG_DEFINITION_PATH "generated//" LANG_FROM ".h";
+    std::string current_language_path = LANG_DEFINITION_FOLDER "generated//" LANG_FROM ".h";
     current_language.open(LANG_LANGUAGES_FOLDER "current_language.h", std::fstream::app);
     current_language << "#include \"";
     current_language << current_language_path;
@@ -902,7 +902,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
     out.close();
 
-    current_language_path = LANG_TRANSLATION_PATH "code_groups//" LANG_TO ".h";
+    current_language_path = LANG_TRANSLATION_FOLDER "code_groups//" LANG_TO ".h";
     
     current_language.open(LANG_LANGUAGES_FOLDER "current_language.h", std::ios_base::app);
     current_language << "#include \"";

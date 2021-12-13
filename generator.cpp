@@ -44,12 +44,12 @@ int main(int argc, char const *argv[]) {
         return -1;
     }
 
-    std::fstream tree;
-    tree.open(LANG_SYNTAX_PATH 
-                LANG_SYNTAX_TREES_FOLDER
-                LANG_FROM
-                ".tree"
-                , std::ios::in);
+    //std::fstream tree;
+    //tree.open(LANG_SYNTAX_PATH 
+    //            LANG_SYNTAX_TREES_FOLDER
+    //            LANG_FROM
+    //            ".tree"
+    //            , std::ios::in);
 
     using mreg_t = uintptr_t;
     Mreg<mreg_t> mreg = Mreg<mreg_t>();
@@ -59,6 +59,8 @@ int main(int argc, char const *argv[]) {
     //                                        ".tree");
     //mreg.load(tree);
     //tree.close();
+
+    //mreg.test();
 
     std::string file = read_str_file(argv[1]);
 

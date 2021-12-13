@@ -61,8 +61,7 @@ int main(int argc, const char * argv[]){
     // Compile3 will load the mreg and start
     // passing values to 
     errors += system("./generator3.sh");
-    return errors // + system("./language");
-        ;
+    return errors;
 }   
 
 // Returns n if found, 0 otherwise.

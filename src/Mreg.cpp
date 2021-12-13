@@ -77,7 +77,7 @@ using regex=Fregex;
 // Offset positions subtracts to the node first position
 // so that when accessed we can just shave of
 // some control positions unused for free
-#define offset_positions 25u
+#define offset_positions (first_char - control_positions)
 #define reserved_data_size 2^15
 
 #define char_offset (control_positions - start_match_char)
@@ -147,28 +147,28 @@ using regex=Fregex;
 // Analizing the regex,
 // the char* meaning of every regex
 // instruction. Must be up to 32 max.
-#define an_warp 1
-#define an_not_sq_brack 2
-#define an_sq_brack 3
-#define an_bb_brack_m_n 4
-#define an_bb_brack__n 5
-#define an_bb_brack_m_ 6
-#define an_bb_brack_m 7
-#define an_asterisk_question 8
-#define an_plus_question 9
-#define an_asterisk 10
-#define an_plus 11
-#define an_question 12
-#define an_backw_slash 13
-#define an_dot 14
-#define an_start_paren 15
-#define an_end_paren 16
-#define an_or 17
-#define an_not_capture 18
-#define an_positive_lookahead 19
-#define an_negative_lookahead 20
-#define an_positive_lookbehind 21
-#define an_negative_lookbehind 22
+#define an_not_sq_brack 1
+#define an_sq_brack 2
+#define an_bb_brack_m_n 3
+#define an_bb_brack__n 4
+#define an_bb_brack_m_ 5
+#define an_bb_brack_m 6
+#define an_asterisk_question 7
+#define an_plus_question 8
+#define an_asterisk 9
+#define an_plus 10
+#define an_question 11
+#define an_backw_slash 12
+#define an_dot 13
+#define an_start_paren 14
+#define an_end_paren 15
+#define an_or 16
+#define an_not_capture 17
+#define an_positive_lookahead 18
+#define an_negative_lookahead 19
+#define an_positive_lookbehind 20
+#define an_negative_lookbehind 21
+#define an_warp 22
 
 
 constexpr inline bool fnull(uint p){ return p != 0; }
@@ -201,13 +201,8 @@ class Mreg{
 
 	T max_str_size = 0;
 
-	// ~10111111 = 01000000 (only select last second bit)
-	static constexpr T warp_mask = ~WARP_MASK;
-	// 1111111 >> 1 = 01111111
-	// ~0111111 = 10000000 (only select last bit)
-	static constexpr T semiwarp_mask = ~SEMIWARP_MASK;
-	// 0111111 (select all but last bit)
-	static constexpr T captures_mask = WARP_MASK;
+	static constexpr T warp_mask = 1;
+	static constexpr T captures_shift = 1;
 
 	T added_id=1;
 
@@ -365,7 +360,7 @@ class Mreg{
 		printf("Seen ");
 		bool seen = false;
 		#endif
-		for(uint lett = control_positions; lett < node_length; ++lett){
+		for(uint lett = control_positions+offset_positions; lett < node_length; ++lett){
 			if(this->data[node+lett]){
 				#if FRB_VERBOSE
 				printf("%c ", lett-char_offset);
@@ -439,6 +434,11 @@ class Mreg{
 
 						//printf("D TEST %d < %d\n", this->data[node+WARP_CAPTURES], static_cast<T>(-this->added_id)); fflush(stdout);
 
+						bool has_warp;
+						if(has_warp = captures->front() == 0)
+							captures->pop_front();
+
+
 						captures->sort();
 						captures->reverse();
 
@@ -477,6 +477,8 @@ class Mreg{
 						}
 
 						#if FRB_VERBOSE
+						if(has_warp)
+							printf("\t Contains warp\n");
 						printf("\t Contains %zu capture nodes\n\t  [", capture_cell, captures->size());
 						#endif
 						
@@ -484,7 +486,10 @@ class Mreg{
 						this->data[capture_cell] = captures->size();
 
 						// Take note the new direction assigned
-						this->data[node+WARP_CAPTURES] = capture_cell;
+						this->data[node+WARP_CAPTURES] = capture_cell << this->captures_shift;
+						if(has_warp){
+							this->data[node + WARP_CAPTURES] |= this->warp_mask;
+						}
 
 						for(long int captured_node : *captures){
 							++capture_cell;
@@ -764,9 +769,11 @@ class Mreg{
 
 		file += "#define FRB_CONSTEXPR_DATA \\\n";
 
+		file += std::to_string(static_cast<out_t>(this->data[0]));
+
 		#define values_nl 5
-		for(uintptr_t i = 0; i != this->data.size(); ++i){
-			file += std::to_string(static_cast<out_t>(this->data[i])) + ", ";
+		for(uintptr_t i = 1; i != this->data.size(); ++i){
+			file += ", " + std::to_string(static_cast<out_t>(this->data[i]));
 			if(i % values_nl == values_nl - 1)
 				file += "\\\n";
 		}
@@ -787,8 +794,6 @@ class Mreg{
 		std::unordered_set<uint> seen = std::unordered_set<uint>();
 		#endif
 
-		int captured_id;
-
 		for(uint node = node_length; node != max_size; node += node_length){
 			if (this->data[node] == CAPTURE_NODE)
 			{
@@ -801,10 +806,10 @@ class Mreg{
 					//printf("node %u of length: %u\n", node, this->data[node]);
 					for(uint captured = this->data[node++]; captured != 0; --captured, ++node){
 						//printf("%u %u %u\n", node, this->data[node], captured);
-						captured_id = abs(static_cast<int>(this->data[node]));
-						this->contains_captures[captured_id] = true;
+						this->contains_captures[abs(static_cast<int>(this->data[node]))] = true;
 
 						#if FRB_VERBOSE
+						int captured_id = abs(static_cast<int>(this->data[node]));
 						if(! seen.count(captured_id)){
 							printf("Detected captures in id: %u\n", captured_id);
 
@@ -1187,13 +1192,13 @@ class Mreg{
 
 		#if !PLAIN_FRB_MATCH
 		// If contains any captures in the initial node
-		if(this->data[mreg+WARP_CAPTURES] & ~WARP_MASK){
+		if(this->data[mreg+WARP_CAPTURES] >> this->captures_shift){
 			#if FRB_VERBOSE
 			printf("Detected captures in node %u [%X]\n", mreg, this->data[mreg+WARP_CAPTURES]);
 			
 			restart_str.push_back(*str);
 			#endif	
-			this->nodes_captures.push_back(this->data[mreg+WARP_CAPTURES]);
+			this->nodes_captures.push_back(this->data[mreg+WARP_CAPTURES] >> this->captures_shift);
 			this->str_captures.push_back(str);
 		}
 		#endif
@@ -1214,30 +1219,48 @@ in_loop:
 			
 			#if !PLAIN_FRB_MATCH
 			if(this->data[mreg+WARP_CAPTURES]){
-				#if FRB_VERBOSE
-				printf("[?] Detected captures in node %u [%u]\n", mreg, this->data[mreg+WARP_CAPTURES]);
-			
-				restart_str.push_back(*str);
-				#endif
-				this->nodes_captures.push_back(this->data[mreg+WARP_CAPTURES]);
-				this->str_captures.push_back(str);
+				if(this->data[mreg+WARP_CAPTURES] & this->warp_mask){
+					#if FRB_VERBOSE
+					printf("[?] Detected warp in node %u\n", mreg);
+					#endif
+
+					this->warps.push(mreg);
+					this->str_warps.push(str);
+					mreg = node_length;
+
+					if(this->data[mreg+WARP_CAPTURES] >> 1){
+						#if FRB_VERBOSE
+						printf("[?] Detected captures in node %u [%u]\n", mreg, this->data[mreg+WARP_CAPTURES] >> this->captures_shift);
+					
+						restart_str.push_back(*str);
+						#endif
+						this->nodes_captures.push_back(this->data[mreg+WARP_CAPTURES] >> this->captures_shift);
+						this->str_captures.push_back(str);																										
+					}
+				} else {
+					#if FRB_VERBOSE
+					printf("[?] Detected captures in node %u [%u]\n", mreg, this->data[mreg+WARP_CAPTURES] >> this->captures_shift);
+				
+					restart_str.push_back(*str);
+					#endif
+					this->nodes_captures.push_back(this->data[mreg+WARP_CAPTURES] >> this->captures_shift);
+					this->str_captures.push_back(str);
+				}
 			}
 			#endif
 
-			#define WARP false
+			#define WARP true
 			
 			#if WARP
 			// Warps go back at the start of the tree to look for 
 			// sub-groups.
 			if(this->data[mreg+WARP_CAPTURES] & this->warp_mask){
 				#if FRB_VERBOSE
-				printf("[?] Detected warp node %u\n  Match continued in node %u\n", mreg, node_length);
+				printf("[?] Detected warp node %u\n", mreg);
 				#endif
 
 				this->warps.push(mreg);
 				this->str_warps.push(str);
-
-				mreg = node_length;
 			}
 			#endif
 
@@ -1245,8 +1268,23 @@ in_loop:
 				goto end_loop;
 		}
 		
-		// No match, so return 0
-		return 0;
+		if(! this->warps.empty()){
+			#if FRB_VERBOSE
+			printf("[?] End of tree in %u\n  Match continued in node %u\n", mreg, node_length);
+			#endif
+			
+			mreg = this->warps.top();
+			//str = this->str_warps.top();
+
+			this->warps.pop();
+			this->str_warps.pop();
+		} else {
+			#if FRB_VERBOSE
+			printf("[-] End of tree in %u\n", mreg);
+			#endif
+			
+			return 0; 
+		}
 
 		}while(1);
 		// Here I need to check for warps. However,
@@ -1389,6 +1427,29 @@ end_loop:
 		return 0;
 	}
 
+	void test(){
+		T mreg = node_length;
+		std::string order = std::string();
+
+		printf("order: \n");
+		std::cin >> order;
+		printf("\n");
+		while(! order.empty()){
+			const char * o = order.c_str();
+			
+			while(*o){
+				printf("%d - ", mreg);
+				mreg = this->data[mreg + *o];
+				printf("%c -> %d\n", *o, mreg);
+				++o;
+			}
+
+			printf("\norder: ");
+			std::cin >> order;
+			printf("\n");
+		}
+		printf("%s\n", this->str().c_str());
+	}
 	/* 
 		Could be done a find/findall algorithm optimization,
 		where we copy all prefixes from the tree to the subsequent

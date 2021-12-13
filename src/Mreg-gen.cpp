@@ -537,7 +537,7 @@ class Mreg_gen : public Mreg<T>{
 					last_added_id = this->added_id;
 					this->added_id = id;
 				}
-				printf(" New nickname [id:%lu]: %s\n", this->added_id, nickname);
+				printf(" New nickname [id:%lu]: %s \n  [%s]\n", this->added_id, nickname, expression);
 
 				this->added_nicknames[nickname] = this->added_id;
 				this->added_final_branches[this->added_id] = branch_t<T>();
@@ -887,37 +887,41 @@ class Mreg_gen : public Mreg<T>{
 					break;
 
 				case an_warp:
-					if(placed_literal){
-						printf("Detected warp\n", split+1);
+					if(*(++analized))
+						if (placed_literal)
+						{
+							printf("Detected warp\n");
 
-						// This case is when we need to match a given sub-group.
-						// There will be added to the node+WARP a new node to point
-						// to when the matched group is valid.
-						for(T node : branches)
-							this->data[node+WARP_CAPTURES] |= ~this->warp_mask;
-					}
-					else{
-						goto testing_do_not_generate;
-						
-						printf("Detected warp of");
+							for(T node : branches)
+								if(this->data[node + WARP_CAPTURES])
+									reinterpret_cast<capture_t<T>*>(
+										this->data[node + WARP_CAPTURES])->push_front(0);
+								else
+									this->data[node + WARP_CAPTURES] = reinterpret_cast<T>(new capture_t<T>{0});
 
-						branches.clear();
-
-						while(*++split){			
-							printf(" %d", *split);
-
-							branch_t<T> final_nodes = this->added_final_branches[*split];
-								
-							branches.insert(final_nodes.begin(), final_nodes.end());
+							//branches = {node_length};
 						}
-						printf("\n  (%d set branches)\n", branches.size());
+						else{
+							// No need for now, since it just ensures it concatenates
+							/*
+							printf("Detected warp of");
 
-						for(T node : branches){
-							this->data[node+WARP_CAPTURES] |= ~this->semiwarp_mask;
+							branches.clear();
+
+							while(*++split){			
+								printf(" %d", *split);
+
+								branch_t<T> final_nodes = this->added_final_branches[*split];
+									
+								branches.insert(final_nodes.begin(), final_nodes.end());
+							}
+							printf("\n  (%d set branches)\n", branches.size());
+
+							for(T node : branches){
+								this->data[node+WARP_CAPTURES] |= ~this->semiwarp_mask;
+							}
+							*/
 						}
-					}
-
-					++analized;
 					
 					continue;
 					
@@ -1186,6 +1190,16 @@ testing_do_not_generate:
 		T merge = 0;
 		branch_t<T> new_branches {};
 
+		std::unordered_map<T, T> same_node_counter = std::unordered_map<T, T>();
+		// Count for each branch the amount of same nodes
+		for(T node : br)
+			if(same_node_counter.count(node))
+				same_node_counter[node]++;
+			else
+				same_node_counter[node] = 1;
+
+		
+
 		for(T node : br){
 			[[likely]];
 
@@ -1200,7 +1214,7 @@ testing_do_not_generate:
 					new_branches.insert(merge = (to ? to : this->new_node()));
 
 				#if FRB_VERBOSE
-				printf("  %u - %c -> %d  (merged)\n", node, letter, merge);
+				printf("  %u - %c -> %d  (new)\n", node, letter, merge);
 				#endif
 				this->add(node, letter, merge);
 			}
@@ -1208,11 +1222,9 @@ testing_do_not_generate:
 			else {
 				T occupied_node = this->data[node+letter+char_offset];
 
-				// If the node is linked from some other nodes, 
-				// we need to duplicate it, because otherwise
-				// we could end up in a "final" node we don't want
-				// to.
-				if(this->data[occupied_node+LINKS] > 1){
+				/*
+				if(this->data[occupied_node+LINKS] > 1
+							&& same_node_counter[occupied_node] == 1){
 					// Use this version of copy to make sure the new node
 					// is set in the place of the previous
 					occupied_node = this->copy(node, letter);
@@ -1221,9 +1233,9 @@ testing_do_not_generate:
 					printf("  %u - %c -> %d  (copied)\n", node, letter, occupied_node);
 					#endif
 				}
+				*/
 				#if FRB_VERBOSE
-				else
-					printf("  %u - %c -> %d  (advanced)\n", node, letter, occupied_node);
+				printf("  %u - %c -> %d  (advanced)\n", node, letter, occupied_node);
 				#endif
 
 				new_branches.insert(occupied_node);
@@ -1897,7 +1909,8 @@ testing_do_not_generate:
 		printf("\n");
 		#endif
 
-		this->data[copied+LINKS] = 1;
+		if(this->data[copied+LINKS])
+			--this->data[copied+LINKS];
 
 		return new_arr;
 	}
@@ -1909,8 +1922,8 @@ testing_do_not_generate:
 
 		for(T node : br){
 			printf("%u", node); fflush(stdout);
-			if(!this->data[node+WARP_CAPTURES])
-				this->data[node+WARP_CAPTURES] = reinterpret_cast<T>(
+			if(! this->data[node+WARP_CAPTURES])
+				this->data[node+WARP_CAPTURES] |= reinterpret_cast<T>(
 												new capture_t<T>{this->added_id}
 											);
 			else
@@ -1968,7 +1981,7 @@ testing_do_not_generate:
 
 		for(T node : br){
 			if(!this->data[node+WARP_CAPTURES])
-				this->data[node+WARP_CAPTURES] = reinterpret_cast<T>(
+				this->data[node+WARP_CAPTURES] |= reinterpret_cast<T>(
 												new capture_t<T>{-this->added_id}
 											);
 			else

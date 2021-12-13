@@ -77,7 +77,7 @@ int main(int argc, const char * argv[]){
     std::string compile_info = read_str_file("lang_compile.h");
     compile_info += "\n\n";
     compile_info += read_str_file("src/generated_tag_list.h");
-    compile_info += "\n\n#include  \"" LANG_SYNTAX_PATH LANG_SYNTAX_TREES_FOLDER LANG_FROM ".tree.h\"";
+    compile_info += "\n\n#include \"" LANG_SYNTAX_FOLDER LANG_SYNTAX_TREES_FOLDER LANG_FROM ".tree.h\"";
 
     // Clean current_lang
     std::ofstream current_lang;
