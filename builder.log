@@ -1,0 +1,758 @@
+Reading file: languages//1-Syntax//%s.json
+Reading file: languages//2-Definition//%s.json
+Reading file: languages//3-Translation//%s.json
+Reading file: languages//4-Language//%s.json
+(1/5) Generate syntax
+P: standalones
+p: standalones
+Searching in path standalones_print
+p: standalones_print
+Got array in standalones_print
+p: standalones_print
+Got string "print\(%primitive%\)" in standalones_print
+p: standalones_print
+Got string "print\s+%primitive%" in standalones_print
+_solve print\(%primitive%\)
+Matched str: primitive in "primitive"
+P: primitive
+p: primitive
+Searching in path primitive_bool
+Searching in path primitive_char
+Searching in path primitive_double
+Searching in path primitive_float
+Searching in path primitive_int
+Searching in path primitive_str
+p: primitive_bool
+Got array in primitive_bool
+p: primitive_char
+Got string "\'[^\']?\'" in primitive_char
+p: primitive_double
+Got string "\d*\.(d|\d+d)" in primitive_double
+p: primitive_float
+Got string "\d*\.(f|\d+f?)" in primitive_float
+p: primitive_int
+Got string "\d+" in primitive_int
+p: primitive_str
+Got string "\"((?!\\)[^\"])*?\"" in primitive_str
+p: primitive_bool
+Got string "true" in primitive_bool
+p: primitive_bool
+Got string "false" in primitive_bool
+_solve \'[^\']?\'
+Insert \'[^\']?\'
+ New nickname [id:1]: primitive_char 
+  [\'[^\']?\']
+
+
+### DELETING
+	 102
+###
+
+
+Analizing pattern: "\'[^\']?\'"
+  Looks like the regex analizer was not generated.
+	Generating regex analizer
+    FINAL EXPRESSION [4]:
+  \'->"'", #1, #11, \'->"'"
+
+Detected: "'"
+   Generated new node: 179
+  102 - ' -> 179  (new)
+Detected: [^\']
+   Generated new node: 281
+  179 - ~ -> 281  (merged)
+  179 - ` -> 281  (merged)
+  179 - º -> 281  (merged)
+  179 - < -> 281  (merged)
+  179 - ? -> 281  (merged)
+  179 - > -> 281  (merged)
+  179 - = -> 281  (merged)
+  179 - - -> 281  (merged)
+  179 - / -> 281  (merged)
+  179 - " -> 281  (merged)
+  179 - | -> 281  (merged)
+  179 - ] -> 281  (merged)
+  179 - [ -> 281  (merged)
+  179 - } -> 281  (merged)
+  179 - { -> 281  (merged)
+  179 - ª -> 281  (merged)
+  179 - + -> 281  (merged)
+  179 - _ -> 281  (merged)
+  179 - ) -> 281  (merged)
+  179 - ( -> 281  (merged)
+  179 - * -> 281  (merged)
+  179 - & -> 281  (merged)
+  179 - ^ -> 281  (merged)
+  179 - % -> 281  (merged)
+  179 - $ -> 281  (merged)
+  179 - # -> 281  (merged)
+  179 - @ -> 281  (merged)
+  179 - ! -> 281  (merged)
+  179 - 	 -> 281  (merged)
+  179 - 
+ -> 281  (merged)
+  179 -   -> 281  (merged)
+  179 - z -> 281  (merged)
+  179 - y -> 281  (merged)
+  179 - x -> 281  (merged)
+  179 - L -> 281  (merged)
+  179 - K -> 281  (merged)
+  179 - J -> 281  (merged)
+  179 - I -> 281  (merged)
+  179 - H -> 281  (merged)
+  179 - G -> 281  (merged)
+  179 - F -> 281  (merged)
+  179 - E -> 281  (merged)
+  179 - D -> 281  (merged)
+  179 - M -> 281  (merged)
+  179 - 0 -> 281  (merged)
+  179 - k -> 281  (merged)
+  179 - N -> 281  (merged)
+  179 - 1 -> 281  (merged)
+  179 - l -> 281  (merged)
+  179 - O -> 281  (merged)
+  179 - 2 -> 281  (merged)
+  179 - m -> 281  (merged)
+  179 - P -> 281  (merged)
+  179 - 3 -> 281  (merged)
+  179 - n -> 281  (merged)
+  179 - Q -> 281  (merged)
+  179 - 4 -> 281  (merged)
+  179 - o -> 281  (merged)
+  179 - A -> 281  (merged)
+  179 - R -> 281  (merged)
+  179 - 5 -> 281  (merged)
+  179 - p -> 281  (merged)
+  179 - B -> 281  (merged)
+  179 - S -> 281  (merged)
+  179 - 6 -> 281  (merged)
+  179 - q -> 281  (merged)
+  179 - Â -> 281  (merged)
+  179 - C -> 281  (merged)
+  179 - 7 -> 281  (merged)
+  179 - r -> 281  (merged)
+  179 - 8 -> 281  (merged)
+  179 - s -> 281  (merged)
+  179 - 9 -> 281  (merged)
+  179 - t -> 281  (merged)
+  179 - T -> 281  (merged)
+  179 - U -> 281  (merged)
+  179 - V -> 281  (merged)
+  179 - W -> 281  (merged)
+  179 - X -> 281  (merged)
+  179 - Y -> 281  (merged)
+  179 - Z -> 281  (merged)
+  179 - a -> 281  (merged)
+  179 - b -> 281  (merged)
+  179 - c -> 281  (merged)
+  179 - d -> 281  (merged)
+  179 - e -> 281  (merged)
+  179 - f -> 281  (merged)
+  179 - g -> 281  (merged)
+  179 - h -> 281  (merged)
+  179 - i -> 281  (merged)
+  179 - j -> 281  (merged)
+  179 - u -> 281  (merged)
+  179 - v -> 281  (merged)
+  179 - w -> 281  (merged)
+Detected: ?
+Detected: "'"
+   Generated new node: 383
+  179 - ' -> 383  (new)
+  281 - ' -> 383  (new)
+
+  383,
+Added new expression with id:1
+Adding 1 final nodes to id:1
+_solve \d*\.(d|\d+d)
+Insert \d*\.(d|\d+d)
+ New nickname [id:2]: primitive_double 
+  [\d*\.(d|\d+d)]
+
+
+### DELETING
+	 102 204 306 408
+###
+
+
+Analizing pattern: "\d*\.(d|\d+d)"
+    FINAL EXPRESSION [10]:
+  #12, #9, \.->".", #14, "d", #16, #12, #10, "d", #15
+
+Detected: \d
+   Generated new node: 485
+  102 - 0 -> 485  (merged)
+  102 - 1 -> 485  (merged)
+  102 - 2 -> 485  (merged)
+  102 - 3 -> 485  (merged)
+  102 - 4 -> 485  (merged)
+  102 - 5 -> 485  (merged)
+  102 - 6 -> 485  (merged)
+  102 - 7 -> 485  (merged)
+  102 - 8 -> 485  (merged)
+  102 - 9 -> 485  (merged)
+Detected: *
+Detected: "."
+   Generated new node: 587
+  485 - . -> 587  (new)
+Detected: (
+Detected: "d"
+   Generated new node: 689
+  587 - d -> 689  (new)
+Opening 1 captures
+689	WARP_CAPTURES 689 : 0x1b87a1d0
+Detected: |
+Detected: \d
+   Generated new node: 791
+  587 - 0 -> 791  (merged)
+  587 - 1 -> 791  (merged)
+  587 - 2 -> 791  (merged)
+  587 - 3 -> 791  (merged)
+  587 - 4 -> 791  (merged)
+  587 - 5 -> 791  (merged)
+  587 - 6 -> 791  (merged)
+  587 - 7 -> 791  (merged)
+  587 - 8 -> 791  (merged)
+  587 - 9 -> 791  (merged)
+Detected: +
+Detected: "d"
+   Generated new node: 893
+  791 - d -> 893  (new)
+Detected: )
+
+Detected multiple final 2 branches
+  689,893,
+Added new expression with id:2
+Adding 2 final nodes to id:2
+_solve \d*\.(f|\d+f?)
+Insert \d*\.(f|\d+f?)
+ New nickname [id:3]: primitive_float 
+  [\d*\.(f|\d+f?)]
+
+
+### DELETING
+	 102 204 306 408 510 612[2K	 714 816 918
+###
+
+
+Analizing pattern: "\d*\.(f|\d+f?)"
+    FINAL EXPRESSION [11]:
+  #12, #9, \.->".", #14, "f", #16, #12, #10, "f", #11, #15
+
+Detected: \d
+   Generated new node: 995
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[0 48] {new: 995}
+  102 - 0 -> 995  (copied)
+   Generated new node: 1097
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[1 49] {new: 1097}
+  102 - 1 -> 1097  (copied)
+   Generated new node: 1199
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[2 50] {new: 1199}
+  102 - 2 -> 1199  (copied)
+   Generated new node: 1301
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[3 51] {new: 1301}
+  102 - 3 -> 1301  (copied)
+   Generated new node: 1403
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[4 52] {new: 1403}
+  102 - 4 -> 1403  (copied)
+   Generated new node: 1505
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[5 53] {new: 1505}
+  102 - 5 -> 1505  (copied)
+   Generated new node: 1607
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[6 54] {new: 1607}
+  102 - 6 -> 1607  (copied)
+   Generated new node: 1709
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[7 55] {new: 1709}
+  102 - 7 -> 1709  (copied)
+   Generated new node: 1811
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[8 56] {new: 1811}
+  102 - 8 -> 1811  (copied)
+  102 - 9 -> 485  (advanced)
+Detected: *
+Detected: "."
+  995 - . -> 587  (advanced)
+  1097 - . -> 587  (advanced)
+  1199 - . -> 587  (advanced)
+  1301 - . -> 587  (advanced)
+  1403 - . -> 587  (advanced)
+  1505 - . -> 587  (advanced)
+  1607 - . -> 587  (advanced)
+  1709 - . -> 587  (advanced)
+  1811 - . -> 587  (advanced)
+  485 - . -> 587  (advanced)
+Detected: (
+Detected: "f"
+   Generated new node: 1913
+  587 - f -> 1913  (new)
+Opening 1 captures
+1913	WARP_CAPTURES 1913 : 0x1b87cca0
+Detected: |
+Detected: \d
+   Generated new node: 2015
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 587[0 48] {new: 2015}
+  587 - 0 -> 2015  (copied)
+   Generated new node: 2117
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 587[1 49] {new: 2117}
+  587 - 1 -> 2117  (copied)
+   Generated new node: 2219
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 587[2 50] {new: 2219}
+  587 - 2 -> 2219  (copied)
+   Generated new node: 2321
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 587[3 51] {new: 2321}
+  587 - 3 -> 2321  (copied)
+   Generated new node: 2423
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 587[4 52] {new: 2423}
+  587 - 4 -> 2423  (copied)
+   Generated new node: 2525
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 587[5 53] {new: 2525}
+  587 - 5 -> 2525  (copied)
+   Generated new node: 2627
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 587[6 54] {new: 2627}
+  587 - 6 -> 2627  (copied)
+   Generated new node: 2729
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 587[7 55] {new: 2729}
+  587 - 7 -> 2729  (copied)
+   Generated new node: 2831
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 587[8 56] {new: 2831}
+  587 - 8 -> 2831  (copied)
+  587 - 9 -> 791  (advanced)
+Detected: +
+Detected: "f"
+   Generated new node: 2933
+  2015 - f -> 2933  (new)
+  2117 - f -> 2933  (new)
+  791 - f -> 2933  (new)
+  2219 - f -> 2933  (new)
+  2321 - f -> 2933  (new)
+  2423 - f -> 2933  (new)
+  2525 - f -> 2933  (new)
+  2627 - f -> 2933  (new)
+  2729 - f -> 2933  (new)
+  2831 - f -> 2933  (new)
+Detected: ?
+Detected: )
+
+Detected multiple final 12 branches
+  1913,2831,2729,2627,2525,2423,2321,2219,791,2117,2015,2933,
+Added new expression with id:3
+Adding 12 final nodes to id:3
+_solve \d+
+Insert \d+
+ New nickname [id:4]: primitive_int 
+  [\d+]
+
+
+### DELETING
+	 102 204 306 408 510 612[2K	 714 816 918 1020 1122 1224[2K	 1326 1428 1530 1632 1734 1836[2K	 1938 2040 2142 2244 2346 2448[2K	 2550 2652 2754 2856 2958
+###
+
+
+Analizing pattern: "\d+"
+    FINAL EXPRESSION [2]:
+  #12, #10
+
+Detected: \d
+   Generated new node: 3035
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[0 48] {new: 3035}
+  102 - 0 -> 3035  (copied)
+   Generated new node: 3137
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[1 49] {new: 3137}
+  102 - 1 -> 3137  (copied)
+   Generated new node: 3239
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[2 50] {new: 3239}
+  102 - 2 -> 3239  (copied)
+   Generated new node: 3341
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[3 51] {new: 3341}
+  102 - 3 -> 3341  (copied)
+   Generated new node: 3443
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[4 52] {new: 3443}
+  102 - 4 -> 3443  (copied)
+   Generated new node: 3545
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[5 53] {new: 3545}
+  102 - 5 -> 3545  (copied)
+   Generated new node: 3647
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[6 54] {new: 3647}
+  102 - 6 -> 3647  (copied)
+   Generated new node: 3749
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[7 55] {new: 3749}
+  102 - 7 -> 3749  (copied)
+   Generated new node: 3851
+
+ Data: 0, 1, 2, 3, 4, 5, 6, 
+Copied array in 102[8 56] {new: 3851}
+  102 - 8 -> 3851  (copied)
+  102 - 9 -> 485  (advanced)
+Detected: +
+
+Detected multiple final 10 branches
+  3035,3137,485,3239,3341,3443,3545,3647,3749,3851,
+Added new expression with id:4
+Adding 10 final nodes to id:4
+_solve \"((?!\\)[^\"])*?\"
+Insert \"((?!\\)[^\"])*?\"
+ New nickname [id:5]: primitive_str 
+  [\"((?!\\)[^\"])*?\"]
+
+
+### DELETING
+	 102 204 306 408 510 612[2K	 714 816 918 1020 1122 1224[2K	 1326 1428 1530 1632 1734 1836[2K	 1938 2040 2142 2244 2346 2448[2K	 2550 2652 2754 2856 2958 3060[2K	 3162 3264 3366 3468 3570 3672[2K	 3774 3876
+###
+
+
+Analizing pattern: "\"((?!\\)[^\"])*?\""
+    FINAL EXPRESSION [8]:
+  \"->""", #14, #14, #11, #19, \\)->")", #9, \"->"""
+
+Detected: """
+   Generated new node: 3953
+  102 - " -> 3953  (new)
+Detected: (
+Detected: (
+Detected: ?
+Opening 1 captures
+3953	WARP_CAPTURES 3953 : 0x1b87d4b0
+Opening 1 captures
+3953	WARP_CAPTURES 3953 : 0x1b87d4b0
+Detected negative lookahead
+Detected: ")"
+   Generated new node: 4055
+  3953 - ) -> 4055  (new)
+Detected: *
+Detected: """
+   Generated new node: 4157
+  4055 - " -> 4157  (new)
+
+  4157,
+Added new expression with id:5
+Adding 1 final nodes to id:5
+_solve true
+Insert true
+ New nickname [id:6]: primitive_bool 
+  [true]
+
+
+### DELETING
+	 102 204 306 408 510 612[2K	 714 816 918 1020 1122 1224[2K	 1326 1428 1530 1632 1734 1836[2K	 1938 2040 2142 2244 2346 2448[2K	 2550 2652 2754 2856 2958 3060[2K	 3162 3264 3366 3468 3570 3672[2K	 3774 3876 3978 4080 4182
+###
+
+
+Analizing pattern: "true"
+    FINAL EXPRESSION [1]:
+  "true"
+
+Detected: "true"
+  102 - t -> 383  (advanced)
+   Generated new node: 4259
+  383 - r -> 4259  (new)
+   Generated new node: 4361
+  4259 - u -> 4361  (new)
+   Generated new node: 4463
+  4361 - e -> 4463  (new)
+
+  4463,
+Added new expression with id:6
+Adding 1 final nodes to id:6
+_solve false
+Insert false
+ Seen nickname [id:6] with last 1 nodes: 4463
+
+
+### DELETING
+	 102 204 306 408 510 612[2K	 714 816 918 1020 1122 1224[2K	 1326 1428 1530 1632 1734 1836[2K	 1938 2040 2142 2244 2346 2448[2K	 2550 2652 2754 2856 2958 3060[2K	 3162 3264 3366 3468 3570 3672[2K	 3774 3876 3978 4080 4182 4284[2K	 4386 4488
+###
+
+
+Analizing pattern: "false"
+    FINAL EXPRESSION [1]:
+  "false"
+
+Detected: "false"
+   Generated new node: 4565
+  102 - f -> 4565  (new)
+   Generated new node: 4667
+  4565 - a -> 4667  (new)
+   Generated new node: 4769
+  4667 - l -> 4769  (new)
+   Generated new node: 4871
+  4769 - s -> 4871  (new)
+   Generated new node: 4973
+  4871 - e -> 4973  (new)
+
+  4973,
+Added new expression with id:6
+Adding 1 final nodes to id:6
+Insert print\(\)
+ New nickname [id:7]: standalones_print 
+  [print\(\)]
+
+
+### DELETING
+	 102 204 306 408 510 612[2K	 714 816 918 1020 1122 1224[2K	 1326 1428 1530 1632 1734 1836[2K	 1938 2040 2142 2244 2346 2448[2K	 2550 2652 2754 2856 2958 3060[2K	 3162 3264 3366 3468 3570 3672[2K	 3774 3876 3978 4080 4182 4284[2K	 4386 4488 4590 4692 4794 4896[2K	 4998
+###
+
+
+Analizing pattern: "print\(\)"
+    FINAL EXPRESSION [2]:
+  print\(->"print(", #22
+
+Detected: "print("
+  102 - p -> 281  (advanced)
+   Generated new node: 5075
+  281 - r -> 5075  (new)
+   Generated new node: 5177
+  5075 - i -> 5177  (new)
+   Generated new node: 5279
+  5177 - n -> 5279  (new)
+   Generated new node: 5381
+  5279 - t -> 5381  (new)
+   Generated new node: 5483
+  5381 - ( -> 5483  (new)
+
+  5483,
+Added new expression with id:7
+Adding 1 final nodes to id:7
+_solve print\s+%primitive%
+Matched str: primitive in "primitive"
+P: primitive
+p: primitive
+Searching in path primitive_bool
+Searching in path primitive_char
+Searching in path primitive_double
+Searching in path primitive_float
+Searching in path primitive_int
+Searching in path primitive_str
+p: primitive_bool
+Got array in primitive_bool
+p: primitive_char
+Got string "\'[^\']?\'" in primitive_char
+p: primitive_double
+Got string "\d*\.(d|\d+d)" in primitive_double
+p: primitive_float
+Got string "\d*\.(f|\d+f?)" in primitive_float
+p: primitive_int
+Got string "\d+" in primitive_int
+p: primitive_str
+Got string "\"((?!\\)[^\"])*?\"" in primitive_str
+p: primitive_bool
+Got string "true" in primitive_bool
+p: primitive_bool
+Got string "false" in primitive_bool
+_solve \'[^\']?\'
+Insert \'[^\']?\'
+_solve \d*\.(d|\d+d)
+Insert \d*\.(d|\d+d)
+_solve \d*\.(f|\d+f?)
+Insert \d*\.(f|\d+f?)
+_solve \d+
+Insert \d+
+_solve \"((?!\\)[^\"])*?\"
+Insert \"((?!\\)[^\"])*?\"
+_solve true
+Insert true
+_solve false
+Insert false
+Insert print\s+
+ Seen nickname [id:7] with last 1 nodes: 5483
+
+
+### DELETING
+	 102 204 306 408 510 612[2K	 714 816 918 1020 1122 1224[2K	 1326 1428 1530 1632 1734 1836[2K	 1938 2040 2142 2244 2346 2448[2K	 2550 2652 2754 2856 2958 3060[2K	 3162 3264 3366 3468 3570 3672[2K	 3774 3876 3978 4080 4182 4284[2K	 4386 4488 4590 4692 4794 4896[2K	 4998 5100 5202 5304 5406 5508[2K	
+###
+
+
+Analizing pattern: "print\s+"
+    FINAL EXPRESSION [4]:
+  "print", #12, #10, #22
+
+Detected: "print"
+  102 - p -> 281  (advanced)
+  281 - r -> 5075  (advanced)
+  5075 - i -> 5177  (advanced)
+  5177 - n -> 5279  (advanced)
+  5279 - t -> 5381  (advanced)
+Detected: \s
+   Generated new node: 5585
+  5381 -   -> 5585  (merged)
+  5381 - 
+ -> 5585  (merged)
+  5381 - 	 -> 5585  (merged)
+Detected: +
+
+  5585,
+Added new expression with id:7
+Adding 1 final nodes to id:7
+
+
+### CLEANING
+### Size 5712 -> 5712
+
+Serializing all 5712 data pos... 
+[#] Data serialized.
+
+(2/5) Generate codes
+Got 7 nicknames
+ Added in depth 1 : standalones_print
+ Added in depth 0 : standalones
+ Added in depth 1 : primitive_bool
+ Added in depth 0 : primitive
+ Added in depth 1 : primitive_int
+ Added in depth 1 : primitive_float
+ Added in depth 1 : primitive_double
+ Added in depth 1 : primitive_str
+ Added in depth 1 : primitive_char
+Setup depth 1(3,0) 0(4,3) 
+Added codes:
+Looking up from primitive_char
+  found parent primitive
+   (root)
+  adding id primitive [0] with id 1 << 3, depth 0
+  adding id primitive_char with id 1 << 0, depth 1
+Looking up from primitive_str
+  found parent primitive
+   (seen)
+  adding id primitive_str with id 2 << 0, depth 1
+Looking up from primitive_double
+  found parent primitive
+   (seen)
+  adding id primitive_double with id 3 << 0, depth 1
+Looking up from primitive_float
+  found parent primitive
+   (seen)
+  adding id primitive_float with id 4 << 0, depth 1
+Looking up from primitive_int
+  found parent primitive
+   (seen)
+  adding id primitive_int with id 5 << 0, depth 1
+Looking up from primitive_bool
+  found parent primitive
+   (seen)
+  adding id primitive_bool with id 6 << 0, depth 1
+Looking up from standalones_print
+  found parent standalones
+   (root)
+  adding id standalones [0] with id 2 << 3, depth 0
+  adding id standalones_print with id 7 << 0, depth 1
+Looking up from primitive
+   (seen)
+Looking up from standalones
+   (seen)
+(3/5) Generate checks
+Get object of definition : standalones_print
+  Defined: standalones_print_data
+Get object of definition : primitive_bool
+Get object of definition : primitive_int
+Get object of definition : primitive_float
+Get object of definition : primitive_double
+Get object of definition : primitive_str
+Get object of definition : primitive_char
+
+Got object of type Object from translation:
+  standalones_print
+Generating patterns...
+ 1 remaining conditions.
+1st ~ 0 2 ~ depth: 0
+2nd ~ "code" "code"
+Got 1 paths
+  Path: print in file 4 (3 strings)
+Solving language code...
+-> tags -> calls -> vars/args
+
+Code solved!
+
+Solving language code...
+-> tags -> calls -> vars/args
+
+Code solved!
+
+Solving language code...
+-> tags -> calls -> vars/args
+
+Code solved!
+
+ 1 remaining conditions.
+1st ~ 1 2 ~ depth: 0
+2nd ~ "representation" "code"
+Got a representation
+ 1 remaining conditions.
+1st ~ 2 2 ~ depth: 0
+ ~ Reached end of object 2/2.
+Not found primitive_bool in any of the files (1,461862760)
+
+Not found primitive_int in any of the files (1,461778392)
+
+Not found primitive_float in any of the files (1,461865256)
+
+Not found primitive_double in any of the files (1,461889392)
+
+Not found primitive_str in any of the files (1,461778328)
+
+Not found primitive_char in any of the files (1,461862264)
+
+END
+(4/5) Resolve dependencies
+(5/5) Generate compile time syntax tree
+
+
+### CLEANING
+### Size 5712 -> 5712
+
+Generating constexpr...
+[ DONE ]
+
+
+### DELETING
+	 102 204 306 408 510 612[2K	 714 816 918 1020 1122 1224[2K	 1326 1428 1530 1632 1734 1836[2K	 1938 2040 2142 2244 2346 2448[2K	 2550 2652 2754 2856 2958 3060[2K	 3162 3264 3366 3468 3570 3672[2K	 3774 3876 3978 4080 4182 4284[2K	 4386 4488 4590 4692 4794 4896[2K	 4998 5100 5202 5304 5406 5508[2K	 5610
+###
+
