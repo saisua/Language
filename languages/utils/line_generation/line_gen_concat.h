@@ -13,7 +13,7 @@
 
 var_t generate_var();
 
-/*
+
 void add_line(var_container<var_t> line){
     std::string result_line = "";
    
@@ -31,4 +31,3 @@ void add_line(var_container<var_t> line){
         }
     }
 }
-*/

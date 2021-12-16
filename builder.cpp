@@ -94,11 +94,17 @@ int main(int argc, const char * argv[]){
     generate_definition_checks(generated_matcher, files);
     printf("(4/5) Resolve dependencies\n");
     generate_utils_dependencies(files);
+    
     printf("(5/5) Generate compile time syntax tree\n");
     generated_matcher.clean_gen();
     std::ofstream constexpr_syntax;
     constexpr_syntax.open(LANG_SYNTAX_PATH LANG_SYNTAX_TREES_FOLDER LANG_FROM ".tree.h", std::ios::out);
     generated_matcher.generate_constexpr<uint16_t>(constexpr_syntax);
+    
+    std::ofstream store_data;
+    store_data.open(LANG_SYNTAX_PATH LANG_SYNTAX_TREES_FOLDER LANG_FROM ".tree", std::ios::out);
+    generated_matcher.store(store_data);
+    store_data.close();
     printf("[ DONE ]\n");
 
     return 0;

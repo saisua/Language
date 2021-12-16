@@ -1,1 +1,1 @@
-g++ -std=c++20 -Ofast -march=native builder.cpp -o builder -g -lstdc++ -ljson11 $@
+g++ -std=c++20 -O1 builder.cpp -o builder -g -lstdc++ -ljson11 $@

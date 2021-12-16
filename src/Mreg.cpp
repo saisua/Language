@@ -71,9 +71,9 @@ using regex=Fregex;
 // Defined both, so the first_char
 // is for cache optimizations
 #define first_char 32u
-#define start_match_char  7u
+#define start_match_char  5u
 #define last_char 127u
-#define control_positions 7u
+#define control_positions 5u
 // Offset positions subtracts to the node first position
 // so that when accessed we can just shave of
 // some control positions unused for free
@@ -82,7 +82,7 @@ using regex=Fregex;
 
 #define char_offset (control_positions - start_match_char)
 
-#define node_length (last_char - start_match_char + control_positions - offset_positions)
+#define node_length (last_char - offset_positions)
 
 
 
@@ -98,20 +98,17 @@ using regex=Fregex;
 // A pointer to a vector<uint> of nodes, from which 
 // we were meant to merge, when we advance one char
 #define GROUP (offset_positions + 1)
-// The next node we must route to
-#define NEXT (offset_positions + 2)
 // The amount of nodes pointing to this node
-#define LINKS (offset_positions + 3)
+#define LINKS (offset_positions + 2)
 // The final id of the match. (offset_positions + 0) if the node is not final
-#define FINAL (offset_positions + 4)
+#define FINAL (offset_positions + 3)
 // A pointer to a list of captures to keep track what
 // sub-strings to get and what not
 // Also contains a flag, which will return 
 // to the start of the tree
 // when detected, and when it ends, returns
 // to the node 
-#define WARP_CAPTURES (offset_positions + 5)
-#define NUMBER_CAPTURES (offset_positions + 6)
+#define WARP_CAPTURES (offset_positions + 4)
 #define SEMIWARP_MASK (std::numeric_limits<T>::max()>>1)
 #define WARP_MASK (std::numeric_limits<T>::max()>>2 | ~SEMIWARP_MASK)
 
@@ -388,12 +385,13 @@ class Mreg{
 	// Generates a new node at the end of data and 
 	// returns it.
 	inline T new_node(){
+		#if FRB_VERBOSE
+		printf("   Generated new node: %u at %u[%u]\n", this->data.size() - offset_positions,
+		 									this->data.size(), node_length);
+		#endif
+
 		T new_node = this->data.size() - offset_positions;
 		this->data.insert(this->data.end(), node_length, 0);
-
-		#if FRB_VERBOSE
-		printf("   Generated new node: %u\n", new_node);
-		#endif
 
 		return new_node;
 	}
@@ -411,22 +409,29 @@ class Mreg{
 	void _clear_capture_vectors(){
 		std::unordered_map<T, uint> capture_data_start = std::unordered_map<T, uint>();
 		std::unordered_map<uint, uint> capture_data_space = std::unordered_map<uint, uint>();
-		const size_t max_size = this->data.size();
+		const size_t max_size = this->data.size()-offset_positions;
 	
 		uint capture_cell;
 
-		for(uint node = node_length; node != max_size; node += node_length){
+		for(uint node = node_length-offset_positions; node != max_size; node += node_length){
 			// If the node is a reallocated capture node, no need 
 			// to iterate over it
-			if(this->data[node] == CAPTURE_NODE)
+
+			printf("%d %d", node, this->data[node+WARP_CAPTURES]);
+			if (this->data[node] == CAPTURE_NODE){
+				printf("c\n");
 				continue;
+			}
+
+			printf("-\n");
 
 			// If the node has a capture vector
 			// and it is a pointer (gt data.size())
 			if(this->data[node+WARP_CAPTURES]){
-				if(this->data[node+WARP_CAPTURES] > static_cast<T>(this->data.size()) &&
-							// Why cast to int? Just works.
-							static_cast<int>(this->data[node+WARP_CAPTURES]) < static_cast<int>(-this->added_id)){
+				// If it is a pointer, it must be
+				// greater than data.size()
+				if (this->data[node+WARP_CAPTURES] >> this->captures_shift > this->data.size())
+				{
 					// If we have not deleted this ptr yet
 					if(! deleted.count(this->data[node+WARP_CAPTURES])){
 
@@ -434,10 +439,9 @@ class Mreg{
 
 						//printf("D TEST %d < %d\n", this->data[node+WARP_CAPTURES], static_cast<T>(-this->added_id)); fflush(stdout);
 
-						bool has_warp;
-						if(has_warp = captures->front() == 0)
-							captures->pop_front();
-
+						uint prev_size = captures->size();
+						captures->remove(0);
+						bool has_warp = captures->size() != prev_size;
 
 						captures->sort();
 						captures->reverse();
@@ -454,7 +458,7 @@ class Mreg{
 
 
 						#if FRB_VERBOSE
-						printf("\tNew ptr 0x%X in node %u\n\t", this->data[node+WARP_CAPTURES], node);
+						printf("\tNew ptr 0x%X in node %u\n", this->data[node+WARP_CAPTURES], node);
 						#endif
 
 						//printf("D2 TEST\n"); fflush(stdout);
@@ -478,17 +482,18 @@ class Mreg{
 
 						#if FRB_VERBOSE
 						if(has_warp)
-							printf("\t Contains warp\n");
-						printf("\t Contains %zu capture nodes\n\t  [", capture_cell, captures->size());
+							printf("\t\t Contains warp\n");
+						printf("\t\t Contains %zu capture nodes\n\t  [", capture_cell, captures->size());
 						#endif
 						
-						capture_data_start[this->data[node+WARP_CAPTURES]] = capture_cell;
+						capture_data_start[this->data[node+WARP_CAPTURES]] = capture_cell << this->captures_shift;
 						this->data[capture_cell] = captures->size();
 
 						// Take note the new direction assigned
 						this->data[node+WARP_CAPTURES] = capture_cell << this->captures_shift;
 						if(has_warp){
 							this->data[node + WARP_CAPTURES] |= this->warp_mask;
+							capture_data_start[this->data[node + WARP_CAPTURES]] |= this->warp_mask;
 						}
 
 						for(long int captured_node : *captures){
@@ -1191,8 +1196,8 @@ class Mreg{
 		//__builtin_prefetch(&this->data[node_length+WARP_CAPTURES]);
 
 		#if !PLAIN_FRB_MATCH
-		// If contains any captures in the initial node
-		if(this->data[mreg+WARP_CAPTURES] >> this->captures_shift){
+			// If contains any captures in the initial node
+			if (this->data[mreg + WARP_CAPTURES] >> this->captures_shift){
 			#if FRB_VERBOSE
 			printf("Detected captures in node %u [%X]\n", mreg, this->data[mreg+WARP_CAPTURES]);
 			
@@ -1204,7 +1209,8 @@ class Mreg{
 		#endif
 
 		do{
-		while(mreg = this->data[mreg+*str+char_offset]){
+			printf("start %c %d\n", *str, *(str+1));
+		while(this->data[mreg+*str+char_offset] && (mreg = this->data[mreg+*str+char_offset])){
 			[[likely]];
 
 // This is in case there
@@ -1249,7 +1255,7 @@ in_loop:
 			}
 			#endif
 
-			#define WARP true
+			#define WARP false
 			
 			#if WARP
 			// Warps go back at the start of the tree to look for 
@@ -1270,11 +1276,16 @@ in_loop:
 		
 		if(! this->warps.empty()){
 			#if FRB_VERBOSE
-			printf("[?] End of tree in %u\n  Match continued in node %u\n", mreg, node_length);
+			printf("[?] End of tree in %u\n  Match continued in node ", mreg);
 			#endif
 			
+			if(! this->data[mreg+FINAL])
+				str = this->str_warps.top();
 			mreg = this->warps.top();
-			//str = this->str_warps.top();
+
+			#if FRB_VERBOSE
+			printf("%u\n", mreg);
+			#endif
 
 			this->warps.pop();
 			this->str_warps.pop();
@@ -1312,7 +1323,7 @@ end_loop:
 
 				return final;
 			}
-			T *pos_array = this->result_subgr.append_node(this->data[mreg + NUMBER_CAPTURES]);
+			T *pos_array = this->result_subgr.append_node(2);
 
 			typename
 			std::vector<T>::const_iterator nodes_iter = this->nodes_captures.cbegin();
@@ -1437,16 +1448,24 @@ end_loop:
 		while(! order.empty()){
 			const char * o = order.c_str();
 			
-			while(*o){
+			while(*o && mreg){
 				printf("%d - ", mreg);
 				mreg = this->data[mreg + *o];
 				printf("%c -> %d\n", *o, mreg);
+				if(data[mreg + WARP_CAPTURES])
+					printf("   Contains warps or captures: %d\n", data[mreg + WARP_CAPTURES]);
+				if(data[mreg + FINAL])
+					printf("   Contains final: %d\n", data[mreg + FINAL]);
 				++o;
 			}
+			if(*o){
+				printf("Got to end. Resetting node");
+				mreg = node_length;
+			}
 
-			printf("\norder: ");
-			std::cin >> order;
-			printf("\n");
+				printf("\norder: ");
+				std::cin >> order;
+				printf("\n");
 		}
 		printf("%s\n", this->str().c_str());
 	}

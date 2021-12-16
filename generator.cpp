@@ -38,9 +38,9 @@ template<int size>
 constexpr void add_line(std::array<var_ct, size> lines)
     __attribute__((always_inline));
 
-int main(int argc, char const *argv[]) {
+int main(int argc, const char ** argv) {
     if(argc < 2){
-        printf("Minimal usage: compile <filename>");
+        printf("Minimal usage: compile <filename>\n");
         return -1;
     }
 
@@ -64,12 +64,13 @@ int main(int argc, char const *argv[]) {
 
     std::string file = read_str_file(argv[1]);
 
-    printf("Matching file %s\n", argv[1]);
+    printf("Matching file %s %s\n", argv[1], file.c_str());
     // This does only accept only one line
     mreg.match_and_subgroups(file.c_str());
 
     mreg_t path = 0, pos = 0;
     C_linked_list<uintptr_t> & data = mreg.result_subgr;
+
 
     switch(data[0]){
         definition_generated

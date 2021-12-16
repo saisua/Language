@@ -331,12 +331,24 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
 }
 
 void update_mreg(Mreg_gen<uintptr_t> &mreg, std::string nickname, uintptr_t new_code){
+    uintptr_t old_code = mreg.added_nicknames[nickname];
     mreg.added_nicknames[nickname] = new_code;
+
+    printf("Updating mreg code %d -> %d\n", old_code, new_code);
 
     for (uintptr_t branch : mreg.final_nicknames[nickname])
     {
         mreg.data[branch + FINAL] = new_code;
     }
+    for(uint node = node_length; node < mreg.data.size(); node += node_length)
+        if(mreg.data[node+WARP_CAPTURES] >> mreg.captures_shift)
+            for(uintptr_t & capture : *reinterpret_cast<capture_t<uintptr_t>*>(
+                                                            mreg.data[node+WARP_CAPTURES]) )
+                if(abs(capture) == old_code){
+                    capture = capture > 0 ? new_code : -new_code;
+
+                    printf("  Updated node %d\n", node);
+                }
 
     mreg.all_states.insert(new_code);
 }

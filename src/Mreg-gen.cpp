@@ -37,6 +37,11 @@ std::unordered_set<char> invert_chars(const char chars){
 
 	return negative;
 };
+inline bool ends_with(std::string const & value, std::string const & ending)
+{
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
 
 template <typename T>
 class Mreg_gen : public Mreg<T>{
@@ -86,267 +91,95 @@ class Mreg_gen : public Mreg<T>{
 		#if FRB_VERBOSE
 		printf("\nAnalizing pattern: \"%s\"\n", c_raw_expr);
 		#endif
+
+		// If the analizer is not generated, we need to create it
 		if(! this->analizer_generated)
 			this->generate_regex_analizer();
 
 		// The list with the processed substrings
-		std::list<std::string> storage = std::list<std::string>{c_raw_expr};
+		// To fill in what we have analized
+		std::vector<std::string> storage = std::vector<std::string>{c_raw_expr};
+		std::vector<std::string> tmp_storage = std::vector<std::string>();
 
-		{
 		std::smatch match;
 		uint last;
 		std::string expr_part;
 
-		std::vector<std::string>::const_iterator lb_iter = this->lookbehind .begin();
+		std::vector<std::string>::const_iterator lb_iter = this->lookbehind.begin();
 
 		// Iterate over the expression, looking for regex
 		// patterns. If there is one, add it to expression
 		// Get matcher (regex) and flags (map<char, id>)
 		// in the entire regex analize and start matching
 		// all split strings in storage.
-		for(const auto& [matcher, flags] : this->regex_analizer){
-			#if FRB_VERBOSE_ANALYSIS
-			/*
-			if(storage.size()){
-				printf("[~] ");
-
-				for(std::string &s : *storage){
-					if(s.front() > 31)
-						printf("%s, ", s.c_str());
-					else
-						printf("#, ");
-				}
-
-				printf("\n");
-			}
-			*/
-			printf("%s\n  ", matcher.pattern.c_str());
-			int found = 0;
-			int parts = 0;
-			#endif
-
-			// Get an iterator of the list. 
-			std::list<std::string>::iterator expr_iter = storage.begin(); 
-			
-			// While we are not at the end of the list.
-			while(expr_iter != storage.end()){				
-				if((*expr_iter)[0] < 32){
-					#if FRB_VERBOSE_ANALYSIS
-					printf("#");
+		for(const auto& reg_tuple : this->regex_analizer){
+			// match the matcher regex against all strings in storage
+			for(std::string str : storage){
+				while(std::regex_search(str, match, reg_tuple.first)){
+					#if FRB_VERBOSE
+					printf("Got analisis match \"%s\" ", match.str().c_str());
 					#endif
 
-					++expr_iter;
+					if(lb_iter->empty() || !ends_with(match.prefix(), *lb_iter)){
+						#if FRB_VERBOSE
+						printf("valid\n");
+#endif
+						// Since we know that the negative lookbehind is
+						// not matched, we can apply it.
 					
-					continue;
-				}
+						// First, we add the unmatched prefix of str
+						if(match.prefix().length())
+							tmp_storage.emplace_back(match.prefix());
+						
+						// Then we need to check what match it really is.
+						if(reg_tuple.second.size() == 1){
+							// Since there is only one option, may as well
+							// use it.
+							// flags will return the int reference of the
+							// match id.
+							std::string match_part = std::string()+(char)reg_tuple.second.at('_');
 
-				#if FRB_VERBOSE_ANALYSIS
-				if(!found)
-					printf("|");
-				#endif
+							// And then add the matched part
+							// if there is any
+							for (uint i = 1; i != match.size(); ++i)
+								match_part += match[i];
 
-				// Keep this so that we can match the
-				// regex again against the suffix of the
-				// same loop
-				expr_part = *expr_iter;
-
-				bool matched = false;
-				bool looped = false;
-				while(matched = std::regex_search(expr_part, match, matcher)) {
-					if(looped){
-						storage.emplace(expr_iter, "");
-						--expr_iter;
-					}
-					
-					looped = true;
-
-					#if FRB_VERBOSE_ANALYSIS
-					if(! found)
-						printf(" %s:", expr_part.c_str());
-					else
-						printf(",");
-					#endif
-
-					// New prefix string to be added in storage
-					std::string prefix = match.prefix().str();
-					// New matched string to be added in storage
-					// where the first char will be changed to
-					// the appropiate identifier
-					std::string match_result = "0";
-					if(prefix.empty() || !(*lb_iter).length() || !prefix.ends_with(*lb_iter))
-						if(match.size() > 1){
-							auto m = match.cbegin() + 1;
-							match_result.append(*m);
-
-							#if FRB_VERBOSE_ANALYSIS
-							if(! found)
-								printf(" [");
-
-							printf(" M:%s ", (*m).str().c_str());
-							#endif
-
-							while(++m != match.cend()){
-								match_result.append(1, ANALIZE_SEPARATE);
-
-								match_result.append(*m);
-
-								#if FRB_VERBOSE_ANALYSIS
-								printf("M:%s ", (*m).str().c_str());
-								#endif
-							
-							}
+							tmp_storage.emplace_back(match_part);
 						} else {
-							#if FRB_VERBOSE_ANALYSIS
-							printf("[ ");
-							#endif
-
-							match_result.append((*(match.cbegin())).str());
+							// We now have to check what match it really is.
+							// We do this by checking the flags map.
+							//
+							// It is known the match is only one char
+							//
+							// flags will return the int reference of the
+							// match id.
+							tmp_storage.emplace_back(std::string()+(char)reg_tuple.second.at(match[1].str().front()));
 						}
-
-					// matched regex, but failed in negative lookbehind
-					else {
-						std::string suffix = match.suffix().str();
-
-						#if FRB_VERBOSE_ANALYSIS
-						// Add to match_result to print for debugging purposes
-						auto m2 = match.cbegin();
-						std::string full_match = std::string(*m2);
-
-						match_result.assign(*m2);
-						while(++m2 != match.cend()){
-								match_result.append(1, ANALIZE_SEPARATE);
-								match_result.append(*m2);
-						}
+					} else if(!lb_iter->empty()){
+						#if FRB_VERBOSE
+						printf("neglected\n");
 						#endif
+						// We got a match, but it was neglected by
+						// the negative lookbehind.
+						std::string prefix = match.prefix();
 
-						// If there is something to look for, it is
-						// rather messy, I need to add the prefix + matches,
-						// and assign it to the previous searched string
-						if(suffix.length()){
-							for(auto m = match.cbegin() + 1; m != match.cend(); ++m)
-								prefix.append(*m);
+						for(uint i = 0; i != lb_iter->size(); ++i)
+							prefix.pop_back();
 
-							storage.emplace(expr_iter, prefix);
-
-							// In case the while does not loop, 
-							// the program will think *expr_iter is
-							// valid, and so it must be changed now.
-							(*expr_iter).assign(suffix);
-							expr_part.assign(suffix);
-
-							#if FRB_VERBOSE_ANALYSIS
-							printf(" [ M!(%s) S:%s ", match_result.c_str(), suffix.c_str());
-							#endif
-
-							// Just in case there is no more matches
-							looped = false;
-
-							continue;
-						}
-
-						(*expr_iter).assign(expr_part);
-
-						#if FRB_VERBOSE_ANALYSIS
-						printf(" [ M!(%s) ", match_result.c_str());
-						#endif
-
-						++expr_iter;
-
-						break;
+						tmp_storage.emplace_back(prefix + match[0].str());
 					}
 
-					// New suffix string to be added in storage
-					std::string suffix = match.suffix().str();
-
-					// Detect the exact match found
-					char search_char = (*(match_result.begin()+1));
-					std::unordered_map<char, uint>::const_iterator find;
-
-					if(search_char && (find = flags.find(search_char)) != flags.end()){
-						#if FRB_VERBOSE_ANALYSIS
-						++found;
-						#endif
-
-						// Since the match was exact,
-						// we only need its identifier
-						match_result.assign("0");
-					} else {
-						find = flags.find('_');
-
-						if(find != flags.end()){
-							#if FRB_VERBOSE_ANALYSIS
-							++found;
-							#endif
-						} else {
-							printf("\n[-] Wrong match Idk how\n");
-							printf("\t{P:%s c:%c S:%s}\n", prefix.c_str(), search_char, suffix.c_str());
-						}
-					}
-					
-					// Change the initial char to the identifier
-					match_result[0] = find->second;
-
-					// Replace the matched string with the
-					// prefix of the match
-					if(prefix.length()){
-						#if FRB_VERBOSE_ANALYSIS
-						printf("P:%s ", prefix.c_str());
-						#endif
-
-						// Assign breaks iterators
-						(*expr_iter).assign(prefix);
-						++expr_iter;
-
-						storage.emplace(expr_iter, match_result);
-					} 
-					// or if it does not exist, replace it
-					// with the matched result instead.
-					else {
-						(*expr_iter).assign(match_result);
-						++expr_iter;
-					}
-
-					if(suffix.length() != 0){
-						#if FRB_VERBOSE_ANALYSIS
-						printf("S:%s ", suffix.c_str());
-						#endif
-
-						expr_part.assign(suffix);
-						//storage.emplace(expr_iter, suffix);
-
-						looped = true;
-					}
-					// No need to continue the loop
-					else {
-						++expr_iter;
-
-						break;
-					}
+					str.assign(match.suffix());
 				}
 
-				if(! matched){
-					if(expr_iter != storage.end()){
-						// Sometimes after a match this is needed
-						(*expr_iter).assign(expr_part);
-
-						++expr_iter;
-					} else
-						storage.emplace(expr_iter, expr_part);
-				}
-				
-				#if FRB_VERBOSE_ANALYSIS
-				printf("N:%d ] ", storage.size());
-				#endif
-				
+				if(str.length())
+					tmp_storage.emplace_back(str);
 			}
 
-			#if FRB_VERBOSE_ANALYSIS
-			if(found)
-				printf("\n");
-			#endif
+			storage.assign(tmp_storage.begin(), tmp_storage.end());
+			tmp_storage.clear();
 
 			++lb_iter;
-		}
 		}
 
 		char** c_final = new char*[storage.size() + 1];
@@ -358,50 +191,23 @@ class Mreg_gen : public Mreg<T>{
 		#endif
 		printf("    FINAL EXPRESSION [%d]:\n  ", storage.size());
 		#endif
-		for(std::list<std::string>::const_iterator storage_iter = storage.cbegin();; ++final_iter){
-			std::string stored_string = *storage_iter;
-
-			// In case the string is explicit, 
-			// we don't need no more backslashes.
-			// It cannot be added before, in case it is rematched
-			if(stored_string.front() > 31){
-				#if FRB_VERBOSE
-				std::string prev_string = std::string(stored_string);
-
-				size_t s_size = stored_string.length();
-				#endif
-				stored_string.erase(std::remove(stored_string.begin(), stored_string.end(), '\\'), 
-										stored_string.end());
-
-				#if FRB_VERBOSE
-				if(stored_string.length() != s_size)
-					printf("%s->", prev_string.c_str());
-				#endif
-			}
-			
-			*final_iter = new char[stored_string.length()+1];
-			strcpy(*final_iter, stored_string.c_str());
-
-			#if FRB_VERBOSE
-			if(stored_string.front() > 31)
-				printf("\"%s\"", stored_string.c_str());
-			else
-				printf("#%d", stored_string.front());
-
-			#endif
-
-			// only for verbose
-			if((++storage_iter) == storage.cend())
-				break;
-			else{
-				#if FRB_VERBOSE
-				printf(", ");
-				#endif
-			}
-
-		}
 		
-		*(final_iter+1) = NULL;
+		for(std::string & final_part : storage){
+			if(final_part.front() > 31){
+			final_part = std::regex_replace(final_part, std::regex("\\\\"), std::string(""));
+				#if FRB_VERBOSE
+				printf("\"%s\" ", final_part.c_str());
+			} else {
+				printf("#%d ", final_part.front());
+			#endif
+			}
+
+			*final_iter = new char[final_part.size() + 1];
+			strcpy(*final_iter, final_part.c_str());
+			
+			++final_iter;
+		}
+		*final_iter = nullptr;
 
 		#if FRB_VERBOSE
 		printf("\n\n");
@@ -423,6 +229,7 @@ class Mreg_gen : public Mreg<T>{
 		using umap = std::unordered_map<char, uint>;
 
 		this->lookbehind = std::vector<std::string>{
+			"",   // Warps
 			"\\", // [^...]
 			"\\", // [...]
 			"\\", // {m,n}
@@ -440,8 +247,7 @@ class Mreg_gen : public Mreg<T>{
 		this->regex_analizer = std::vector<std::pair<regex, umap>>{
 				// Analizes warps
 				{regex(
-						(std::string()+static_cast<char>(an_warp)
-							+"(.*?)"+static_cast<char>(an_warp)).c_str(), std::regex::ECMAScript), umap{
+						(std::string()+static_cast<char>(an_warp)).c_str()), umap{
 					{'_',an_warp}
 				}},
 
@@ -578,7 +384,8 @@ class Mreg_gen : public Mreg<T>{
 		// last append
 		this->delete_pointers();
 
-		T open_parenthesis = 0, close_parenthesis = 0;
+		T open_parenthesis = 0, close_parenthesis = 0,
+		  open_warp = 0;
 
 		// Calculate expression length
 		uint expression_length = 100;
@@ -892,12 +699,23 @@ class Mreg_gen : public Mreg<T>{
 						{
 							printf("Detected warp\n");
 
-							for(T node : branches)
+							// Okay, here I'm going
+							// to repeat myself, and in fact
+							// the if inside the for is not even
+							// necessary. However, this is just to
+							// be future-proof, and it is not critical
+							this->new_start_group(branches);
+
+							for(T node : branches){
 								if(this->data[node + WARP_CAPTURES])
+									[[likely]]
 									reinterpret_cast<capture_t<T>*>(
 										this->data[node + WARP_CAPTURES])->push_front(0);
 								else
 									this->data[node + WARP_CAPTURES] = reinterpret_cast<T>(new capture_t<T>{0});
+							
+								printf("WARP PTR %d: %d\n", node, this->data[node + WARP_CAPTURES]);
+							}
 
 							//branches = {node_length};
 						}
@@ -981,11 +799,14 @@ class Mreg_gen : public Mreg<T>{
 
 				parenthesis_type.pop();
 			}
+			for (; open_warp; --open_warp)
+				this->new_end_group(branches);
 
-			// In case we need to loop back or merge optional
-			// expressions (?, *), we need to keep track of 
-			// what nodes were last time.
-			last_last_br.clear();
+
+				// In case we need to loop back or merge optional
+				// expressions (?, *), we need to keep track of
+				// what nodes were last time.
+				last_last_br.clear();
 			last_last_br.insert(last_branches.begin(), last_branches.end());
 			last_branches.clear();
 			last_branches.insert(branches.begin(), branches.end());
@@ -1009,26 +830,30 @@ class Mreg_gen : public Mreg<T>{
 
 		printf("\n");
 
-		#if FRB_VERBOSE
-		if(branches.size() > 1)
+		if(branches.size() > 1){
+			#if FRB_VERBOSE
 			printf("Detected multiple final %u branches\n  ", branches.size());
-		else
-			printf("  ");
-		#endif
+			#endif
 
+			for(T node : branches){
+				this->data[node+FINAL] = this->added_id;
+
+				#if FRB_VERBOSE
+				printf("%u,",node); 
+				#endif
+			}
+		} else{
+			#if FRB_VERBOSE
+			printf("Final node: %d\n", *branches.begin());
+			#endif
+			this->data[(*branches.begin())+FINAL] = this->added_id;
+		}
+		
 testing_do_not_generate:
 
-		for(T node : branches){
-			this->data[node+FINAL] = this->added_id;
-
-			#if FRB_VERBOSE
-			printf("%u,",node); 
-			#endif
-		}
-
 
 		#if FRB_VERBOSE
-		printf("\nAdded new expression with id:%u\n", this->added_id);
+		printf("\nAdded new expression with id:%u\n###\n\n", this->added_id);
 		#endif
 
 		++this->data[NUM_ADDED];
@@ -1063,125 +888,6 @@ testing_do_not_generate:
 
 			return new_state;
 		}
-	}
-
-	// Append inline sub-functions
-	inline uint append_letter(const uint node, const char* expr, bool regexpr=false, const uint to=0){
-		// If not regexpr we can be sure it has been part of a loop or branching
-		// And so, right now, it has just ended
-		if(!regexpr){ [[likely]]
-			// Count the amount of letters seen
-			//(*this->count)[*expr]++;
-
-			// If exists a GROUP_ID and it is the same as this append (every expr append has
-			// a unique ID) it means last letter append was actually a charset, and we must
-			// converge them all to one
-			if(this->data[node+GROUP_ID] == this->added_id){
-				uint result = this->data[node+NEXT];
-				
-				group_t<uint>* group = reinterpret_cast<group_t<uint>*>(this->data[node+GROUP]);
-
-				#if FRB_VERBOSE
-					printf("Detected post multi-regex node %u of length %i\n", node, group->size());
-				#endif
-				for(group_t<uint>::const_iterator n = group->cbegin(); n != group->end(); ++n){
-					this->data[*n+*expr+char_offset] = result;
-					#if FRB_VERBOSE
-					printf(" %u -> %u\n", (*n), result);
-					#endif
-				}
-
-				return result;
-			}
-		}
-		# if FRB_VERBOSE
-		else
-			printf("Found clean append_letter (prolly after charset)\n");
-		#endif
-
-		// Si ya existe dicha letra, avanza con el
-		// objeto al siguiente array.
-		if(this->data[node+*expr+char_offset]){
-			return append_letter_exist(node, expr);
-		}
-		else {
-			return append_letter_no_exist(node, expr, to);
-		}
-	}
-
-	inline uint append_letter_exist(const uint node, const char* expr){
-		#if FRB_VERBOSE
-		printf("Letter exists\n");
-		#endif
-		// Next node to go
-		uint lett = this->data[node+*expr+char_offset];
-		
-		#if FRB_VERBOSE
-		if(lett)
-			printf("Next node has %li links\n", this->data[lett+LINKS]);
-		#endif
-
-		// Si el objeto estaba apuntado por un charset,
-		// duplica el nodo, pues los charset no van a seguir
-		// el mismo camino
-		if((*(expr+1) != '\\' || this->data[lett+*(expr+1)+char_offset])
-					&& this->data[lett+LINKS] > 1){
-			return this->copy(node, *expr);
-		}
-		else{
-			capture_t<long unsigned int>* capture_merge = new capture_t<long unsigned int>();
-
-			// Cast lett+CAPTURE and node+CAPTURE to capture_t<long unsigned int>*, and merge
-			// them into capture_merge.
-			capture_t<long unsigned int>* merged_capture;
-			
-			if(this->data[node+WARP_CAPTURES]){
-				merged_capture = reinterpret_cast<capture_t<long unsigned int>*>(this->data[node+WARP_CAPTURES]);
-
-				if(!this->deleted.count(this->data[node+WARP_CAPTURES]))
-					capture_merge->insert(capture_merge->end(), merged_capture->begin(), merged_capture->end());
-			}
-			if(this->data[node+WARP_CAPTURES]){
-				merged_capture = reinterpret_cast<capture_t<long unsigned int>*>(this->data[lett+WARP_CAPTURES]);
-
-				if(!this->deleted.count(this->data[node+WARP_CAPTURES]))
-					capture_merge->insert(capture_merge->end(), merged_capture->begin(), merged_capture->end());
-			
-				if(this->data[lett+LINKS] == 1)
-					delete merged_capture;
-				else
-					// Add capture to unknown_ptrs
-					this->unknown_ptrs.push_back(merged_capture);
-			}
-
-			if(capture_merge->size())
-				this->data[lett+WARP_CAPTURES] = reinterpret_cast<T>(capture_merge);
-			else
-				delete capture_merge;
-		}
-
-		#if FRB_VERBOSE
-		printf("%u -> %u\n", node, lett);
-		#endif
-		return lett;
-	}
-
-	inline uint append_letter_no_exist(const uint node, const char* expr, const uint to=0){
-		#if FRB_VERBOSE
-		printf("Letter does not exist");
-		#endif
-		if(to){
-			#if FRB_VERBOSE
-			printf(" (shared)\n%u -> %u\n", node, to);
-			#endif
-			this->add(node, *expr, to);
-
-			return to;
-		}
-		#if FRB_VERBOSE
-		printf("\n");
-		#endif
-		return this->generate(node,*expr);
 	}
 
 	inline void new_append_letter(branch_t<T> &br, const char letter, const T to=0){
@@ -1385,99 +1091,6 @@ testing_do_not_generate:
 		br.insert(new_branches.begin(), new_branches.end());
 	}
 
-	inline uint append_letters(const uint node, const std::string expr, const char* next, const uint to=0){
-		uint new_reg, seen_reg, new_arr, existing_node;
-		group_t<uint>* group;
-
-		if(to && this->data[to+GROUP])
-			group = reinterpret_cast<group_t<uint>*>(this->data[to+GROUP]);
-		else		 
-		 	group = new group_t<uint>();
-
-		group->reserve(group->size()+expr.length());
-
-		// Common node for all letters that do not exist
-		if(to){
-			seen_reg = new_arr = to;
-		} else if(this->data[node+NEXT])
-			seen_reg = new_arr = this->data[node+NEXT];
-		else {
-			seen_reg = this->data.size();
-			this->new_node();
-			new_arr = this->data.size();
-			this->new_node();
-		}
-
-		#if FRB_VERBOSE
-		printf("Append of letters \"%s\"\n", expr.c_str());
-		#endif
-
-		std::unordered_map<uint, uint> exist_common {};
-		std::unordered_map<uint, uint>::const_iterator exists;
-		exist_common.reserve(expr.length());
-
-		for(const char* letts = expr.c_str(); *letts; ++letts){
-			// If node+letts has no existing node, add to the new node
-			if(!(existing_node = this->data[node+*letts+char_offset])){
-				#if FRB_VERBOSE
-				printf(" - '%c' not exist\n %i -> %i\n", *letts, node, seen_reg);
-				#endif
-				this->add(node, *letts, seen_reg);
-			} else {
-				#if FRB_VERBOSE
-				printf(" - '%c' exist\n", *letts);
-				#endif
-				// Find if any other lett has the same node pointing to it
-				exists = exist_common.find(existing_node);
-				
-				// If there isn't (no shared node), duplicate the node
-				if(exists == exist_common.end()){
-					new_reg = this->append_letter_exist(node, std::string({*letts, *next}).c_str());
-					this->data[new_reg+GROUP_ID] = this->added_id;
-					this->data[new_reg+GROUP] = reinterpret_cast<T>(group);
-					this->data[new_reg+NEXT] = new_arr;
-					
-					group->insert(new_reg);
-					exist_common[existing_node] = new_reg;
-				}
-				else {
-					// If any letter has been seen to go to the same node,
-					// go to it too. Note: any duplication has already
-					// been done.
-					#if FRB_VERBOSE
-					printf("Letter exists (shared)\n");
-					#endif
-					this->add(node, *letts, exists->second);
-				}
-				#if FRB_VERBOSE
-				printf("%i -> %i\n", node, new_reg);
-				#endif
-			}
-		}
-
-		// If any of the letters did not exist, we add the common node
-		if(this->data[seen_reg+LINKS]){
-			this->data[seen_reg+GROUP_ID] = this->added_id;
-			this->data[seen_reg+GROUP] = reinterpret_cast<T>(group);
-			this->data[seen_reg+NEXT] = new_arr;
-			this->data[seen_reg+WARP_CAPTURES] = this->data[node+WARP_CAPTURES];
-			
-			group->insert(seen_reg);
-
-			this->check_capture(seen_reg);
-
-			#if FRB_VERBOSE
-			printf("Shared node has %i links\n", this->data[seen_reg+LINKS]);
-			#endif
-
-			return seen_reg;
-		}
-
-		this->check_capture(new_reg);
-
-		return new_reg;
-	}
-
 	inline void new_append_backslash(branch_t<T> &br, const char backslash_letter, T to=0){
 		std::unordered_set<char> neg;
 
@@ -1544,296 +1157,6 @@ testing_do_not_generate:
 		}
 	}
 
-	inline uint append_backslash(const uint node, const char* expr, T to=0){
-		if(this->data[node+NEXT])
-			to = this->data[node+NEXT];
-
-		switch(*expr){
-			case 'd':
-				return this->append_letters(node, reg_d, expr+1, to);
-			case 'w':
-				return this->append_letters(node, reg_w, expr+1, to);
-			case 'n':
-				return this->append_letter(node, std::string({reg_n, *(expr+1)}).c_str(), false, to);
-			case 't':
-				return this->append_letter(node, std::string({reg_t, *(expr+1)}).c_str(), false, to);
-			case 'r':
-				return this->append_letter(node, std::string({reg_r, *(expr+1)}).c_str(), false, to);
-			case '0':
-				return this->append_letter(node, std::string({reg_z, *(expr+1)}).c_str(), false, to);
-			case 's':
-				return this->append_letters(node, reg_s, expr+1, to);
-
-			// cases on caps, inverse
-
-			default:
-				printf("\n### Wrong regex construction \\%c in \"%s\"\n\n", *expr, expr);
-				throw std::invalid_argument("Wrong regex construction \\"+*expr);
-		}
-	}
-
-	uint append_process_sq(const uint node, const char** expr){
-		std::string letts = "";
-		const char* expression = *expr;
-		++expression;
-		uint dist = 0;
-
-		bool backslash = false;
-		for(; *expression && *expression != ']'; ++expression){
-			if(!backslash){
-				if(*expression == '\\'){
-					backslash = true;
-					continue;
-				}
-				if(*expression == '-'){
-					++expression;
-					
-					if(*expression == '\\')
-						++expression;
-					else if(*expression == ']')
-						break;
-
-					for(int let = letts.back()+1; let <= *expression; ++let)
-						letts.push_back(let);
-					continue;
-				}
-			} else 
-				backslash = false;
-
-			letts.push_back(*expression);
-		}
-
-		*expr = *expr+std::distance(*expr, expression);
-
-		std::unordered_set<char> uniq_letts(letts.begin(), letts.end());
-
-		return this->append_letters(node, 
-					std::string(uniq_letts.begin(), uniq_letts.end()), 
-					expression+1);
-	}
-
-	inline uint append_process_bbl(uint node, const char** expr){
-			bool both = false;
-			uint min = 0, max = 0;
-
-			std::string buffer = "";
-			const char* iter = *expr;
-			char it_char, letter = *((*expr)-1);
-			
-			#if FRB_VERBOSE
-			printf("expr: %c{", *((*expr)-1));
-			#endif
-
-			while((it_char=*(++iter)) != '}'){
-				#if FRB_VERBOSE
-				printf("%c", it_char);
-				#endif
-				if(it_char != ',') [[likely]]
-					if(isdigit(it_char)) [[likely]]
-						buffer += it_char;
-					else
-						throw std::invalid_argument("wrong values passed between squared brackets {}");
-				else{
-					min = std::stoi(buffer);
-					both = true;
-					buffer.erase();
-				}
-			}
-
-			*expr = (*expr)+std::distance(*expr, iter);
-			max = buffer!="" ? std::stoi(buffer) : 0;
-
-			/* Result:
-				· max, min > 0:
-					from min to max
-				· min = 0:
-					max times
-				· max = 0
-					from min to infinity
-			*/
-
-			#if FRB_VERBOSE
-			printf("}\n");
-			#endif
-
-			if (max == 0){
-				#if FRB_VERBOSE
-				printf(" %u to infinity the letter %c\n", min, letter);
-				#endif
-
-				// Add the minimum letters to start the loop
-				for(; min > 1; --min)
-					node = this->append_letter(node, (std::string(min, letter)+**expr).c_str());
-
-				// Loop forever if the given letter is found
-				this->append_letter(node, std::string(3, letter).c_str(), false, node);
-
-			} 
-			else if(min != 0){
-				#if FRB_VERBOSE
-				printf(" %u to %u times the letter %c\n", min, max, letter);
-				#endif
-
-				// Removee one from min, since the first node has already
-				// been added
-				min -= 1;
-				uint diff = max-min;
-
-				uint new_arr = this->data.size();
-				this->new_node();
-
-				group_t<uint>* group = new group_t<uint>();
-				group->reserve(diff);
-
-				// Get minimum letters found to allow continue matching
-				for(; min > 1; --min)
-					node = this->append_letter(node, (std::string(min, letter)+**expr).c_str());
-
-				// Add the max-min remaining nodes with exits at any point to the same node
-				for(; diff; --diff){
-					node = this->append_letter(node, (std::string(diff, letter)+**expr).c_str());
-					
-					group->insert(node);
-				}
-
-
-				#if FRB_VERBOSE
-				printf("Added to group nodes: {");
-				#endif
-				for(uint reg : *group){
-					this->data[reg+GROUP_ID] = this->added_id;
-					this->data[reg+GROUP] = reinterpret_cast<T>(group);
-					this->data[reg+NEXT] = new_arr;
-
-					#if FRB_VERBOSE
-					printf("%u, ", reg);
-					#endif
-				}
-				#if FRB_VERBOSE
-				printf("}\n");
-				#endif
-
-			} 
-			else{
-				#if FRB_VERBOSE
-				printf(" %u times the letter %c\n", max, letter);
-				#endif
-
-				// Removee one from max, since the first node has already
-				// been added
-				max -= 1;
-
-				for(; max; --max)
-					node = this->append_letter(node, (std::string(max, letter)+**expr).c_str());
-			}
-
-			return node;
-		}
-	
-	inline uint append_question_mark(uint node, uint last){
-		uint next = this->data.size();
-		this->new_node();
-
-		group_t<uint>* group, * last_group;
-		
-		if(this->data[node+GROUP_ID] != this->added_id || !this->data[node+GROUP]){
-			group = new group_t<uint> {node};
-
-			this->data[node+NEXT] = next;
-			this->data[node+GROUP_ID] = this->added_id;
-			this->data[node+GROUP] = reinterpret_cast<T>(group);
-		}
-		else {
-			group = reinterpret_cast<group_t<uint>*>(this->data[node+GROUP]);
-
-			for(group_t<uint>::const_iterator n = group->cbegin(); n != group->end(); ++n){
-				this->data[*n+NEXT] = next;
-			}
-		}
-
-		// Add the last non-optional to the group
-		if (this->data[last+GROUP_ID] == this->added_id && this->data[last+GROUP]){
-			last_group = reinterpret_cast<group_t<uint>*>(this->data[last+GROUP]);
-			this->deleted.insert(this->data[last+GROUP]);
-
-			for(group_t<uint>::const_iterator n = last_group->cbegin(); n != last_group->end(); ++n){
-				group->insert(*n);
-
-				this->data[*n+NEXT] = next;
-				this->data[*n+GROUP_ID] = this->added_id;
-				this->data[*n+GROUP] = reinterpret_cast<T>(group);
-			}
-
-			delete last_group;
-		} else {
-			group->insert(last);
-			
-			this->data[last+NEXT] = next;
-			this->data[last+GROUP_ID] = this->added_id;
-			this->data[last+GROUP] = reinterpret_cast<T>(group);
-		}
-		
-		
-		return last;
-	}
-	
-	inline uint append_asterisk(uint node, uint last, const char* expr){
-		this->append_question_mark(node, last);
-
-		uint new_node;
-
-		if(is_regex(expr-1)){
-			new_node = this->append_backslash(node, expr-1, node);
-		}
-		else{
-			new_node = this->append_letter_no_exist(node, expr-1, node);
-		}
-
-		return last;
-	}
-	
-	inline uint append_plus(uint node, const char* expr){
-		uint plus_1 = this->data.size();
-		this->new_node();
-
-		group_t<uint>* g_plus;
-
-		if(is_regex(expr)){
-			plus_1 = this->append_backslash(node, expr, plus_1);
-			this->append_backslash(plus_1, expr, plus_1);
-
-			g_plus = reinterpret_cast<group_t<uint>*>(this->data[plus_1+GROUP]);
-		} else {
-			plus_1 = this->append_letter(node, expr, plus_1);
-			this->append_letter_no_exist(plus_1, expr, plus_1);
-
-			g_plus = new group_t<uint>{plus_1};
-			this->data[plus_1+GROUP] = reinterpret_cast<T>(g_plus);
-			this->data[plus_1+GROUP_ID] = this->added_id;
-		}
-
-		if(this->data[node+GROUP_ID] == this->added_id && this->data[node+GROUP]){
-			group_t<uint>* g_node = reinterpret_cast<group_t<uint>*>(this->data[node+GROUP]);
-			this->deleted.insert(this->data[node+GROUP]);
-		
-			for(group_t<uint>::const_iterator n = g_node->cbegin(); n != g_node->end(); ++n){
-				g_plus->insert(*n);
-
-				this->data[*n+GROUP] = reinterpret_cast<T>(g_plus);
-				this->data[*n+GROUP_ID] = this->added_id;
-			}
-
-			delete g_node;
-		} else {
-			g_plus->insert(node);
-			this->data[node+GROUP] = reinterpret_cast<T>(g_plus);
-			this->data[node+GROUP_ID] = this->added_id;
-		}
-
-		return plus_1;
-	}
-	// Append inline sub-functions
-
   	inline uint generate(const uint node, const char pos){
 		uint new_arr = this->data.size();
 		this->new_node();
@@ -1856,9 +1179,9 @@ testing_do_not_generate:
 	void check_capture(const uint node){
 		for(size_t cap = this->capture.size(); cap; --cap){
 			if(this->capture.back() == 1)
-				this->start_group(node);
+				this->new_start_group(node);
 			else
-				this->end_group(node);
+				this->new_end_group(node);
 
 			this->capture.pop();
 		}
@@ -1921,57 +1244,23 @@ testing_do_not_generate:
 		#endif
 
 		for(T node : br){
-			printf("%u", node); fflush(stdout);
-			if(! this->data[node+WARP_CAPTURES])
-				this->data[node+WARP_CAPTURES] |= reinterpret_cast<T>(
-												new capture_t<T>{this->added_id}
-											);
-			else
-				reinterpret_cast<capture_t<T>*>(this->data[node+WARP_CAPTURES])
-									->push_back(this->added_id);
-
-			#if FRB_VERBOSE
-			printf("\tWARP_CAPTURES %u : 0x%x\n", node, this->data[node+WARP_CAPTURES]);
-			#endif
+			this->new_start_group(node);
 		}
 	}
 
-	inline void start_group(const uint node){
-		if(!this->data[node+WARP_CAPTURES]){
-				this->data[node+WARP_CAPTURES] = reinterpret_cast<T>(
-												new capture_t<long unsigned int>()
-											);
-		}
+	inline void new_start_group(const T node){
+		printf("%u", node); fflush(stdout);
+		if(! this->data[node+WARP_CAPTURES])
+			this->data[node+WARP_CAPTURES] = reinterpret_cast<T>(
+											new capture_t<T>{this->added_id}
+										);
+		else
+			reinterpret_cast<capture_t<T>*>(this->data[node+WARP_CAPTURES])
+								->push_back(this->added_id);
 
-		if(this->data[node+GROUP_ID] == this->added_id && this->data[node+GROUP]){
-			// Open the capture in the group of generated nodes
-			group_t<uint>* group = reinterpret_cast<group_t<uint>*>(this->data[node+GROUP]);
-
-			#if FRB_VERBOSE
-			printf("Opening %d captures\n", group->size());
-			#endif
-			for(group_t<uint>::const_iterator n = group->cbegin(); n != group->end(); ++n)
-				if(!this->data[(*n)+WARP_CAPTURES]){
-					this->data[(*n)+WARP_CAPTURES] = reinterpret_cast<T>(
-												new capture_t<long unsigned int> {this->added_id}
-												);
-					#if FRB_VERBOSE
-					printf("\tWARP_CAPTURES %u : 0x%x\n", (*n), this->data[(*n)+WARP_CAPTURES]);
-					#endif
-				}
-				else
-					reinterpret_cast<capture_t<long unsigned int>*>(this->data[(*n)+WARP_CAPTURES])
-									->push_back(this->added_id);
-		}
-		else{
-			reinterpret_cast<capture_t<long unsigned int>*>(this->data[node+WARP_CAPTURES])
-							->push_back(this->added_id);
-			#if FRB_VERBOSE
-			printf("\tCAPTURE START %u : 0x%x\n", node, this->data[node+WARP_CAPTURES]);
-			#endif
-		}
-
-		this->contains_captures[this->added_id] = true;
+		#if FRB_VERBOSE
+		printf("\tWARP_CAPTURES %u : 0x%x\n", node, this->data[node+WARP_CAPTURES]);
+		#endif
 	}
 
 	inline void new_end_group(const branch_t<T> &br){
@@ -1980,55 +1269,23 @@ testing_do_not_generate:
 		#endif
 
 		for(T node : br){
-			if(!this->data[node+WARP_CAPTURES])
-				this->data[node+WARP_CAPTURES] |= reinterpret_cast<T>(
-												new capture_t<T>{-this->added_id}
-											);
-			else
-				reinterpret_cast<capture_t<T>*>(this->data[node+WARP_CAPTURES])
-									->push_front(-this->added_id);
-
-			#if FRB_VERBOSE
-			printf("\tCAPTURES %u : 0x%x\n", node, this->data[node+WARP_CAPTURES]);
-			#endif
+			this->new_end_group(node);
 		}
 	}
 
-	inline void end_group(const uint node){
-		if(!this->data[node+WARP_CAPTURES]){
+	inline void new_end_group(T node){
+		if(!this->data[node+WARP_CAPTURES])
 			this->data[node+WARP_CAPTURES] = reinterpret_cast<T>(
-											new capture_t<long unsigned int>()
+											new capture_t<T>{-this->added_id}
 										);
-			#if FRB_VERBOSE
-			printf("\tWARP_CAPTURES %u : 0x%x\n", node, this->data[node+WARP_CAPTURES]);
-			#endif
-		}
+		else
+			reinterpret_cast<capture_t<T>*>(this->data[node+WARP_CAPTURES])
+								->push_front(-this->added_id);
 
-
-		if(this->data[node+GROUP_ID] == this->added_id && this->data[node+GROUP]){
-			// Close the capture in the group of generated nodes
-			group_t<uint>* group = reinterpret_cast<group_t<uint>*>(this->data[node+GROUP]);
-		
-			#if FRB_VERBOSE
-			printf("Closing %d captures\n", group->size());
-			#endif
-			for(group_t<uint>::iterator n = group->begin(); n != group->end(); ++n){
-				reinterpret_cast<capture_t<long unsigned int>*>(this->data[node+WARP_CAPTURES])
-							->push_front(-this->added_id);
-							
-				#if FRB_VERBOSE
-				printf("\tWARP_CAPTURES %u : 0x%x\n", (*n), this->data[(*n)+WARP_CAPTURES]);
-				#endif
-			}
-		}
-		else{
-			reinterpret_cast<capture_t<long unsigned int>*>(this->data[node+WARP_CAPTURES])
-							->push_front(-this->added_id);
-			#if FRB_VERBOSE
-			printf("\tCAPTURE END %u : 0x%x\n", node, this->data[node+WARP_CAPTURES]);
-			#endif
-		}
-
+		#if FRB_VERBOSE
+		printf("\tCAPTURES %u : 0x%x\n", node, this->data[node+WARP_CAPTURES]);
+		#endif
+	
 	}
 
 	void setup_states(){

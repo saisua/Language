@@ -77,19 +77,6 @@ inline void generate_syntax(Mreg_gen<uintptr_t> & data, json11::Json  & doc){
 
     // And we try to search if they have any, and if so, we solve them
     _solve_generate_syntax(data, doc, regex_matcher, reg_pairs, warp_ids, states);
-
-
-    data.clean();
-    std::fstream store_data;
-    
-    std::string tree_path {LANG_SYNTAX_PATH 
-                            LANG_SYNTAX_TREES_FOLDER 
-                            LANG_FROM
-                            ".tree"};
-
-    store_data.open(tree_path.c_str(), std::ios::out);
-    data.store(store_data);
-    store_data.close();
 }
 
 void generate_states(Mreg_gen<uintptr_t> & data, std::vector<json11::Json> & files){
