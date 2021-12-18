@@ -41,15 +41,13 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
     std::fstream out;
     std::fstream current_language;
 
-    std::string current_language_path = LANG_DEFINITION_FOLDER "codes//" LANG_FROM ".h";
-
     current_language.open(LANG_LANGUAGES_FOLDER "current_language.h", std::ios_base::app);
     current_language << "#include \"";
-    current_language << current_language_path;
+    current_language << LANG_DEFINITION_FOLDER "codes//" LANG_FROM ".h";
     current_language << "\"\n";
     current_language.close();
 
-    out.open(current_language_path, std::ios::out);
+    out.open(LANG_DEFINITION_PATH "codes//" LANG_FROM ".h", std::ios::out);
 
     {
     std::string ward_start = "#ifndef LANG_DEFINITION_CODES_H\n#define LANG_DEFINITION_CODES_H\n\n";
@@ -333,6 +331,14 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
 void update_mreg(Mreg_gen<uintptr_t> &mreg, std::string nickname, uintptr_t new_code){
     uintptr_t old_code = mreg.added_nicknames[nickname];
     mreg.added_nicknames[nickname] = new_code;
+    mreg.contains_captures[new_code] = mreg.contains_captures[old_code];
+    mreg.contains_captures.erase(old_code);
+
+    for(auto & pair : mreg.added_ids){
+        if(pair.second == old_code){
+            pair.second = new_code;
+        }
+    }
 
     printf("Updating mreg code %d -> %d\n", old_code, new_code);
 
@@ -340,15 +346,24 @@ void update_mreg(Mreg_gen<uintptr_t> &mreg, std::string nickname, uintptr_t new_
     {
         mreg.data[branch + FINAL] = new_code;
     }
-    for(uint node = node_length; node < mreg.data.size(); node += node_length)
-        if(mreg.data[node+WARP_CAPTURES] >> mreg.captures_shift)
-            for(uintptr_t & capture : *reinterpret_cast<capture_t<uintptr_t>*>(
-                                                            mreg.data[node+WARP_CAPTURES]) )
+
+    const uint max_size = mreg.data.size() - offset_positions;
+    for (uint node = initial_position; node != max_size; node += node_length)
+    {
+        if(mreg.data[node+WARP_CAPTURES] >> mreg.captures_shift){
+            capture_t<uintptr_t> * capture_list = reinterpret_cast<capture_t<uintptr_t> *>(
+                                                    mreg.data[node + WARP_CAPTURES]);
+
+                                                
+            printf("  check in node %d (0x%X)[%d]\n", node, mreg.data[node+WARP_CAPTURES], capture_list->size());
+            for (uintptr_t &capture : *capture_list)
                 if(abs(capture) == old_code){
                     capture = capture > 0 ? new_code : -new_code;
 
                     printf("  Updated node %d\n", node);
                 }
+        }
+    }
 
     mreg.all_states.insert(new_code);
 }
@@ -890,15 +905,14 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
     std::fstream current_language;
 
-    std::string current_language_path = LANG_DEFINITION_FOLDER "generated//" LANG_FROM ".h";
     current_language.open(LANG_LANGUAGES_FOLDER "current_language.h", std::fstream::app);
     current_language << "#include \"";
-    current_language << current_language_path;
+    current_language << LANG_DEFINITION_FOLDER "generated//" LANG_FROM ".h";
     current_language << "\"\n";
     current_language.close();
 
     std::fstream out;
-    out.open(current_language_path, std::ios::out);
+    out.open(LANG_DEFINITION_PATH "generated//" LANG_FROM ".h", std::ios::out);
 
     {
     std::string ward_start = "#ifndef LANG_DEFINITION_GENERATED_H\n#define LANG_DEFINITION_GENERATED_H\n\n";
@@ -913,18 +927,16 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
     out.write(ward_end.c_str(), ward_end.length());
 
     out.close();
-
-    current_language_path = LANG_TRANSLATION_FOLDER "code_groups//" LANG_TO ".h";
     
     current_language.open(LANG_LANGUAGES_FOLDER "current_language.h", std::ios_base::app);
     current_language << "#include \"";
-    current_language << current_language_path;
+    current_language << LANG_TRANSLATION_FOLDER "code_groups//" LANG_TO ".h";
     current_language << "\"\n";
     current_language.close();
 
     std::fstream translation_out;
 
-    translation_out.open(current_language_path, std::ios::out);
+    translation_out.open(LANG_TRANSLATION_PATH "code_groups//" LANG_TO ".h", std::ios::out);
 
     translation_out.write(translation_code.c_str(), translation_code.length());
 

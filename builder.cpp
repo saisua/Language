@@ -87,6 +87,7 @@ int main(int argc, const char * argv[]){
 
     printf("(1/5) Generate syntax\n");
     generate_syntax(generated_matcher, files[0]);
+
     printf("(2/5) Generate codes\n");
     generate_codes(generated_matcher);
     //generate_states(generated_matcher, files);

@@ -34,13 +34,10 @@ void def_trans_optimize();
 void trans_lang_optimize();
 void language_optimize();
 */
-template<int size>
-constexpr void add_line(std::array<var_ct, size> lines)
-    __attribute__((always_inline));
 
 int main(int argc, const char ** argv) {
     if(argc < 2){
-        printf("Minimal usage: compile <filename>\n");
+        printf("Minimal usage: ./language <filename>\n");
         return -1;
     }
 
@@ -51,8 +48,7 @@ int main(int argc, const char ** argv) {
     //            ".tree"
     //            , std::ios::in);
 
-    using mreg_t = uintptr_t;
-    Mreg<mreg_t> mreg = Mreg<mreg_t>();
+    Mreg mreg = Mreg();
     //printf("Loading syntax tree in %s\n", LANG_SYNTAX_PATH 
     //                                        LANG_SYNTAX_TREES_FOLDER
     //                                        LANG_FROM
@@ -62,26 +58,26 @@ int main(int argc, const char ** argv) {
 
     //mreg.test();
 
+
     std::string file = read_str_file(argv[1]);
 
-    printf("Matching file %s %s\n", argv[1], file.c_str());
+    printf("Matching file %s\n", argv[1]);
     // This does only accept only one line
-    mreg.match_and_subgroups(file.c_str());
+
 
     mreg_t path = 0, pos = 0;
-    C_linked_list<uintptr_t> & data = mreg.result_subgr;
+    // Count time in microseconds using chrono
+    auto start = std::chrono::high_resolution_clock::now();
+    mreg.match_and_subgroups(file.c_str());
 
-
-    switch(data[0]){
+    switch(mreg.result_subgr[2]){
         definition_generated
     }
+    auto end = std::chrono::high_resolution_clock::now();
+
+    // in microseconds
+    std::chrono::duration<double, std::nano> diff = end - start;
+    printf("Matched in %f microseconds\n", diff.count());
 
     return 0;
-}
-
-template<int size>
-constexpr void add_line(std::array<var_ct, size> lines){
-    for (auto sv : lines) {
-        printf("%s\n", sv);
-    }
 }

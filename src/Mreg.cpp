@@ -64,12 +64,6 @@ using regex=Fregex;
 #endif
 
 
-// First char is not 7, but this way
-// we can save on some cycles,
-// since we don't have to "remap"
-// chars. First char is actually 32
-// Defined both, so the first_char
-// is for cache optimizations
 #define first_char 32u
 #define start_match_char  5u
 #define last_char 127u
@@ -78,6 +72,13 @@ using regex=Fregex;
 // so that when accessed we can just shave of
 // some control positions unused for free
 #define offset_positions (first_char - control_positions)
+// Initial position should be (4u - offset_positions)
+// since then it would start at 4, but
+// because it is a negative number,
+// gcc tries to keep a large number instead
+// of overflowing the integer, that is what
+// we want
+#define initial_position 0u
 #define reserved_data_size 2^15
 
 #define char_offset (control_positions - start_match_char)
@@ -173,8 +174,19 @@ inline bool is_regex(const char* expr){
 	return *(expr-1) == '\\' && !(*(expr-1) == '\\' && ! isalpha(*expr));
 }
 
+#ifdef FRB_CONSTEXPR_DATA_LEN
+#if FRB_CONSTEXPR_DATA_LEN >= 4294967296
+using mreg_t = uint64_t;
+#elif FRB_CONSTEXPR_DATA_LEN >= 65536
+using mreg_t = uint32_t;
+#else
+using mreg_t = uint16_t;
+#endif
 
+template <typename T = mreg_t>
+#else
 template <typename T>
+#endif
 class Mreg{
 	// Not all should be public, but I have yet to look up
 	// how to make some variables only accessable from child
@@ -182,8 +194,13 @@ class Mreg{
 	// Take note of which pointers have been deleted
 	std::unordered_set<T> deleted;
 	std::list<capture_t<T>*> unknown_ptrs;
-	
-	std::vector<bool> contains_captures;
+
+	std::unordered_map<T, bool> contains_captures
+	#ifdef FRB_CONSTEXPR_DATA
+						= std::unordered_map<T, bool>({ FRB_CONSTEXPR_CONTAINS_CAPTURES });
+	#else
+								;
+	#endif
 	std::vector<T> nodes_captures;
 	std::vector<const char*> str_captures;
 	std::vector<const char*> str_starts;
@@ -218,12 +235,13 @@ class Mreg{
 	Mreg()
 	{
 #ifndef FRB_CONSTEXPR_DATA
-		this->data = std::vector<T>(node_length * 2, 0);
+		this->data = std::vector<T>(initial_position + offset_positions + node_length, 0);
 		this->data.reserve(reserved_data_size);
+
+		this->contains_captures = std::unordered_map<T, bool>();
 #endif
 		this->states = std::vector<T>();
 
-		this->contains_captures = std::vector<bool>();
 		this->nodes_captures = std::vector<T>();
 		this->str_captures = std::vector<const char *>();
 		this->str_starts = std::vector<const char *>();
@@ -232,7 +250,7 @@ class Mreg{
 
 		this->nodes_data_captures = std::unordered_set<T>();
 
-		this->contains_captures.push_back(false);
+		//this->contains_captures.push_back(false);
 
 		this->result_subgr = C_linked_list<uintptr_t>();
 		this->result_subgr.reserve();
@@ -261,7 +279,7 @@ class Mreg{
 		this->deleted = std::unordered_set<T> {};
 		#endif
 
-		const size_t max_size = this->data.size();
+		const size_t max_size = this->data.size() - offset_positions;
 	
 		#if FRB_VERBOSE
 		printf("\n\n### DELETING\n\t");
@@ -270,7 +288,9 @@ class Mreg{
 		uint count = 0;
 		#endif
 
-		for(uint node = node_length; node != max_size; node += node_length){
+		printf("%d to %d (%d %d)\n\t", initial_position, max_size, node_length, (max_size-initial_position)%node_length);
+
+		for(uint node = initial_position; node != max_size; node += node_length){
 			if(this->nodes_data_captures.count(node))
 				continue;
 
@@ -350,7 +370,7 @@ class Mreg{
 	}
 	#endif
 
-	std::string str(const uint node=node_length){
+	std::string str(const uint node=initial_position){
 		std::string result = "[";
 
 		#if FRB_VERBOSE
@@ -378,7 +398,7 @@ class Mreg{
 		return result;
 	}
 	
-	const char* c_str(const uint node=node_length){
+	const char* c_str(const uint node=initial_position){
 		return this->str(node).c_str();
 	}
 
@@ -413,7 +433,7 @@ class Mreg{
 	
 		uint capture_cell;
 
-		for(uint node = node_length-offset_positions; node != max_size; node += node_length){
+		for(uint node = initial_position; node != max_size; node += node_length){
 			// If the node is a reallocated capture node, no need 
 			// to iterate over it
 
@@ -442,6 +462,15 @@ class Mreg{
 						uint prev_size = captures->size();
 						captures->remove(0);
 						bool has_warp = captures->size() != prev_size;
+
+						if(! captures->size()){
+							printf("\tWarp only node\n");
+
+							this->data[node + WARP_CAPTURES] = this->warp_mask;
+							capture_data_start[this->data[node + WARP_CAPTURES]] = this->warp_mask;
+							
+							continue;
+						}
 
 						captures->sort();
 						captures->reverse();
@@ -486,14 +515,17 @@ class Mreg{
 						printf("\t\t Contains %zu capture nodes\n\t  [", capture_cell, captures->size());
 						#endif
 						
-						capture_data_start[this->data[node+WARP_CAPTURES]] = capture_cell << this->captures_shift;
 						this->data[capture_cell] = captures->size();
 
 						// Take note the new direction assigned
-						this->data[node+WARP_CAPTURES] = capture_cell << this->captures_shift;
 						if(has_warp){
-							this->data[node + WARP_CAPTURES] |= this->warp_mask;
-							capture_data_start[this->data[node + WARP_CAPTURES]] |= this->warp_mask;
+							this->data[node + WARP_CAPTURES] = (capture_cell << this->captures_shift) | this->warp_mask;
+							capture_data_start[this->data[node + WARP_CAPTURES]] =
+																(capture_cell << this->captures_shift) | this->warp_mask;
+						} else {
+							this->data[node + WARP_CAPTURES] = capture_cell << this->captures_shift;
+							capture_data_start[this->data[node + WARP_CAPTURES]] =
+																capture_cell << this->captures_shift;
 						}
 
 						for(long int captured_node : *captures){
@@ -740,26 +772,7 @@ class Mreg{
 	}
 
 	inline void generate_constexpr(std::ostream & out_stream){
-		#if FRB_VERBOSE
-		printf("Generating constexpr...\n");
-		#endif
-
-		std::string file = "#ifndef FRB_CONSTEXPR_DATA_H\n#define FRB_CONSTEXPR_DATA_H\n\n"
-						   "#define FRB_CONSTEXPR_DATA_LEN " +
-						   std::to_string(this->data.size()) + "\n\n";
-
-		file += "#define FRB_CONSTEXPR_DATA \\\n";
-
-		#define values_nl 5
-		for(uintptr_t i = 0; i != this->data.size(); ++i){
-			file += std::to_string(this->data[i]) + ", ";
-			if(i % values_nl == values_nl - 1)
-				file += "\\\n";
-		}
-
-		file += "\n\n#endif\n";
-
-		out_stream << file;
+		this->generate_constexpr<T>(out_stream);
 	}
 
 	template<typename out_t>
@@ -782,6 +795,10 @@ class Mreg{
 			if(i % values_nl == values_nl - 1)
 				file += "\\\n";
 		}
+		file += "\n\n#define FRB_CONSTEXPR_CONTAINS_CAPTURES \\\n";
+		for(auto & cap : this->contains_captures){
+			file += "{ " + std::to_string(cap.first) + ", " + std::to_string(cap.second) + " }, \\\n";
+		}	
 
 		file += "\n\n#endif\n";
 
@@ -791,7 +808,7 @@ class Mreg{
 	void restore_captures(){
 		this->contains_captures.insert(
 				this->contains_captures.cend(), this->added_id+1, false);
-		const size_t max_size = this->data.size();
+		const size_t max_size = this->data.size() - offset_positions;
 
 		#if FRB_VERBOSE
 		printf("Restoring captures in %d positions:\n", max_size);
@@ -799,7 +816,7 @@ class Mreg{
 		std::unordered_set<uint> seen = std::unordered_set<uint>();
 		#endif
 
-		for(uint node = node_length; node != max_size; node += node_length){
+		for(uint node = initial_position; node != max_size; node += node_length){
 			if (this->data[node] == CAPTURE_NODE)
 			{
 				#if FRB_VERBOSE
@@ -986,7 +1003,7 @@ class Mreg{
 		// To capture data, add an array of vector and keep adding 
 		// points of start & finish of any possible match, when
 		// node+start_capture and node+end_capture. 
-		T mreg = node_length;
+		T mreg = initial_position;
 
 		this->nodes_captures.clear();
 		this->str_captures.clear();
@@ -1003,7 +1020,7 @@ class Mreg{
 
 		// Not necessary, but tell the compiler that data
 		// is important and must be cached from that address
-		__builtin_prefetch(&this->data[node_length+WARP_CAPTURES]);
+		__builtin_prefetch(&this->data[initial_position+WARP_CAPTURES]);
 
 		#if !PLAIN_FRB_MATCH
 		// If contains any captures in the initial node
@@ -1175,7 +1192,7 @@ class Mreg{
 		#endif
 		__attribute__ ((hot))
 	{
-		T mreg = node_length;
+		T mreg = initial_position;
 
 		this->nodes_captures.clear();
 		this->str_captures.clear();
@@ -1209,7 +1226,7 @@ class Mreg{
 		#endif
 
 		do{
-			printf("start %c %d\n", *str, *(str+1));
+			//printf("start %c %d\n", *str, *(str+1));
 		while(this->data[mreg+*str+char_offset] && (mreg = this->data[mreg+*str+char_offset])){
 			[[likely]];
 
@@ -1232,7 +1249,7 @@ in_loop:
 
 					this->warps.push(mreg);
 					this->str_warps.push(str);
-					mreg = node_length;
+					mreg = initial_position;
 
 					if(this->data[mreg+WARP_CAPTURES] >> 1){
 						#if FRB_VERBOSE
@@ -1323,7 +1340,8 @@ end_loop:
 
 				return final;
 			}
-			T *pos_array = this->result_subgr.append_node(2);
+			uintptr_t *pos_array = this->result_subgr.append_node(2);
+			*pos_array = final;
 
 			typename
 			std::vector<T>::const_iterator nodes_iter = this->nodes_captures.cbegin();
@@ -1356,10 +1374,10 @@ end_loop:
 			// checking for starting captures is somehow wrong.
 			if(! starting_captures){
 				#if FRB_VERBOSE
-				printf("[-]Contains captures was false, but we did not find any captures\n");
+				printf("[-]Contains captures was true, but we did not find any captures\n");
 				#endif
 
-				return 0;
+				return -1;
 			}
 			#if FRB_VERBOSE
 			printf(" Start capture in char: %c\n", *print_iter);
@@ -1439,7 +1457,7 @@ end_loop:
 	}
 
 	void test(){
-		T mreg = node_length;
+		T mreg = initial_position;
 		std::string order = std::string();
 
 		printf("order: \n");
@@ -1460,12 +1478,12 @@ end_loop:
 			}
 			if(*o){
 				printf("Got to end. Resetting node");
-				mreg = node_length;
+				mreg = initial_position;
 			}
 
-				printf("\norder: ");
-				std::cin >> order;
-				printf("\n");
+			printf("\norder: ");
+			std::cin >> order;
+			printf("\n");
 		}
 		printf("%s\n", this->str().c_str());
 	}

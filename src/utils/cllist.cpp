@@ -70,7 +70,7 @@ class C_linked_list {
             this->_array_starts.push_back(this->_pointers[1]);
 
             this->actual_array = this->_array_starts.front();
-            this->actual_pointer = this->actual_array+1;
+            this->actual_pointer = this->actual_array;
             this->actual_array_index = 0;
 
             this->next_array = this->_array_starts.front()+1;
@@ -116,7 +116,10 @@ class C_linked_list {
             return this->actual_pointer++;
         }
 
-        inline T* append_node(size_t positions=NULL, bool add_size=false){
+        inline T* append_node(size_t positions=NULL, bool add_size=false)
+            __attribute__((always_inline))
+            __attribute__((hot))
+        {
             if(!positions)
                 if(this->_node_size)
                     positions = this->_node_size;

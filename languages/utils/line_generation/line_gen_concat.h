@@ -2,6 +2,7 @@
 #include <string>
 #include <string_view>
 #include "codes//line_gen_codes.h"
+#include <iostream>
 
 #define var_t char*
 #define var_ct std::string_view
@@ -11,9 +12,15 @@
 #define var_container std::vector
 #endif
 
-var_t generate_var();
+var_t generate_var(){
+    return "$t0";
+}
 
+#define add_line(lines)\
+    for (auto sv : lines) \
+        std::cout << sv << '\n';
 
+/*
 void add_line(var_container<var_t> line){
     std::string result_line = "";
    
@@ -30,4 +37,7 @@ void add_line(var_container<var_t> line){
             break;
         }
     }
+
+    printf("%s\n", result_line.c_str());
 }
+*/
