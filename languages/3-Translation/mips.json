@@ -82,26 +82,6 @@
                 },
                 ".%t-bool%":{
                     "operation":{
-                        "%t-bool_operation_strict_not%":{
-                            "code":{
-                                "~if_bool_strict_not~":"#t-bool#"
-                            }
-                        },
-                        "%t-bool_operation_strict_and%":{
-                            "code":{
-                                "~if_bool_strict_and~":"#t-bool#"
-                            }
-                        },
-                        "%t-bool_operation_strict_or%":{
-                            "code":{
-                                "~if_bool_strict_or~":"#t-bool#"
-                            }
-                        },
-                        "%t-bool_operation_strict_xor%":{
-                            "code":{
-                                "~if_bool_strict_xor~":"#t-bool#"
-                            }
-                        },
                         "%t-bool_operation_less than%":{
                             "code":{
                                 "~if_bool_less than~":"#t-bool#"

@@ -100,7 +100,12 @@ int main(int argc, const char * argv[]){
     generated_matcher.clean_gen();
     std::ofstream constexpr_syntax;
     constexpr_syntax.open(LANG_SYNTAX_PATH LANG_SYNTAX_TREES_FOLDER LANG_FROM ".tree.h", std::ios::out);
-    generated_matcher.generate_constexpr<uint16_t>(constexpr_syntax);
+    if(generated_matcher.data.size() >= 4294967296)
+        generated_matcher.generate_constexpr<uint64_t>(constexpr_syntax);
+    else if(generated_matcher.data.size() >= 65536)
+        generated_matcher.generate_constexpr<uint32_t>(constexpr_syntax);
+    else
+        generated_matcher.generate_constexpr<uint16_t>(constexpr_syntax);
     
     std::ofstream store_data;
     store_data.open(LANG_SYNTAX_PATH LANG_SYNTAX_TREES_FOLDER LANG_FROM ".tree", std::ios::out);

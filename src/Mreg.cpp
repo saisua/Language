@@ -79,7 +79,7 @@ using regex=Fregex;
 // of overflowing the integer, that is what
 // we want
 #define initial_position 0u
-#define reserved_data_size 2^15
+#define reserved_data_size 32768u
 
 #define char_offset (control_positions - start_match_char)
 
@@ -1192,6 +1192,7 @@ class Mreg{
 		#endif
 		__attribute__ ((hot))
 	{
+		// profiler: this is match_and_subgroups
 		T mreg = initial_position;
 
 		this->nodes_captures.clear();
@@ -1205,8 +1206,6 @@ class Mreg{
 
 		std::list<char> restart_str = std::list<char>();
 		#endif
-
-		// Profiler: this is match()
 
 		// Not necessary, but tell the compiler that data
 		// is important and must be cached from that address
@@ -1456,6 +1455,7 @@ end_loop:
 		return 0;
 	}
 
+	/*
 	void test(){
 		T mreg = initial_position;
 		std::string order = std::string();
@@ -1492,6 +1492,7 @@ end_loop:
 		where we copy all prefixes from the tree to the subsequent
 		nodes, with no performance nor spatial regression.
 	*/
+
 	
 };
 

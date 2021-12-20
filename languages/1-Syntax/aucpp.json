@@ -28,7 +28,7 @@
     },
     "primitive":{
         "int":"\\d+",
-        "char":"\\'[^\\']?\\'",
+        "char":"\\'\\\\?[^\\']?\\'",
         "str":"\\\"((?!\\\\)[^\\\"])*?\\\"",
         "bool":[
             "true",
@@ -43,8 +43,8 @@
         
         "negation":"not\\s",
         "LBoolean":[
-            "%t-bool_negation%?\\s*%var%",
-            "%t-bool_negation%?\\s*\\d+"
+            "(%t-bool_negation%)?\\s*%var%",
+            "(%t-bool_negation%)?\\s*\\d+"
         ],
         "RBoolean":[
             "\\s*%t-bool_operation%\\s*%t-bool_LBoolean%\\s*",
@@ -53,10 +53,6 @@
 
         "operation":{
             "strict":{
-                "not":"(?=\\W)not\\W",
-                "and":"(?=\\W)and\\W",
-                "or":"(?=\\W)or\\W",
-                "xor":"(?=\\W)xor\\W",
                 "equals":"==",
                 "not equals":"!=",
                 "same":" is ",
@@ -124,9 +120,17 @@
 
     "_comment_standalones":"Standalones are the general instructions that will start on every newline.",
     "standalones":{
+        "if":[
+            "if\\s+%t-bool_Boolean%*\\s*%struct_start%"
+        ],
+        "while":[
+            "while\\s+%t-bool_Boolean%*\\s*%struct_start%"
+        ],
+        "compilationInstr":"#([^\\s].*)",
         "print":[
             "print\\(%primitive%\\)",
             "print\\s+%primitive%"
-        ]
+        ],
+        "structStart":"%struct_start%"
     }
 }

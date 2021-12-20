@@ -1,1 +1,1 @@
-g++ -std=c++20 -Ofast -march=native compile.cpp -o compile -lstdc++ -ljson11 $@
+g++ -std=c++20 compile.cpp -o compile -lstdc++ -ljson11 $@

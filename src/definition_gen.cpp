@@ -380,7 +380,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
     std::string definitions = "";
     std::string switch_cases = "#define definition_generated \\\n";
-    std::string translation_code = "";
+    std::string translation_code = "#define COMMA ,\n\n";
     
 
     // This maps a nickname to its corresponding capture groups.
@@ -613,15 +613,16 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                     {
                         solve_code(final_code, language_patterns, language);
 
-                        tmp_code += " \\\n\t\"" + final_code + "\",";
+                        tmp_code += " \\\n\t\"" + final_code + "\" COMMA";
                     }
-                    tmp_code.pop_back();
+                    for(char _ : "COMMA")
+                        tmp_code.pop_back();
 
                     uint code_size = std::count(tmp_code.begin(), tmp_code.end(), '\n');
 
-                    translation_code += " \\\n\tadd_line<"+
-                                            std::to_string(code_size)+
-                                            ">({" + tmp_code + "})\n";
+                    translation_code += " \\\n\tadd_line<" +
+                                        std::to_string(code_size) + 
+                                        ">({" + tmp_code + "})\n";
                 }
 
                 // There should always be depth > 0, but just in case
