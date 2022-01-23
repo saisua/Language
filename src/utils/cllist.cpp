@@ -70,9 +70,8 @@ class C_linked_list {
             this->_array_starts.push_back(this->_pointers[1]);
 
             this->actual_array = this->_array_starts.front();
-            this->actual_pointer = this->actual_array;
+            this->actual_pointer = this->actual_array+1;
             this->actual_array_index = 0;
-            this->actual_space = this->_collection_size;    
 
             this->next_array = this->_array_starts.front()+1;
             this->next_array_index = 1;
@@ -117,23 +116,15 @@ class C_linked_list {
             return this->actual_pointer++;
         }
 
-        inline T* append_node(size_t positions=NULL, bool add_size=false)
-            __attribute__((always_inline))
-            __attribute__((hot))
-            __attribute__((flatten))
-        {
+        inline T* append_node(size_t positions=NULL, bool add_size=false){
             if(!positions)
                 if(this->_node_size)
                     positions = this->_node_size;
                 else
                     return nullptr;
 
-            //printf("Selected %d positions\n", positions);
-
-            if(this->actual_space < positions){
-                //printf("Allocated new collection\n");
+            if(this->actual_space < positions)
                 this->next_collection();
-            }
 
             T* result = this->actual_pointer;
 
@@ -141,7 +132,6 @@ class C_linked_list {
             this->actual_pointer += positions + add_size;
 
             if(add_size){
-                //printf("Added size\n");
                 *result = positions;
 
                 return result + 1;
@@ -150,11 +140,7 @@ class C_linked_list {
             return result;
         }
 
-        inline void next_collection()
-            __attribute__((always_inline))
-            __attribute__((hot))
-            __attribute__((flatten))
-        {
+        inline void next_collection(){
             if(this->collections == this->_size_coll || this->next_array == nullptr){
                 this->reserve_fibb(true);
             }
@@ -172,11 +158,7 @@ class C_linked_list {
             }
         }
 
-        inline void set_current_collection(T* array)
-            __attribute__((always_inline))
-            __attribute__((hot))
-            __attribute__((flatten))
-        {
+        inline void set_current_collection(T* array){
             ++this->collections;
 
             this->actual_pointer = array+1;
@@ -190,11 +172,7 @@ class C_linked_list {
             }
         }
 
-        inline void set_current_collection(T* array, uint index)
-            __attribute__((always_inline))
-            __attribute__((hot))
-            __attribute__((flatten))
-        {
+        inline void set_current_collection(T* array, uint index){
             ++this->collections;
 
             this->actual_array = array;
@@ -203,11 +181,7 @@ class C_linked_list {
             this->actual_space = *array;
         }
 
-        inline void set_current_collection(T* array, uint index, T* next_array_var, uint next_index)
-            __attribute__((always_inline))
-            __attribute__((hot))
-            __attribute__((flatten))
-        {
+        inline void set_current_collection(T* array, uint index, T* next_array_var, uint next_index){
             ++this->collections;
 
             this->actual_array = array;
@@ -220,11 +194,7 @@ class C_linked_list {
         }
 
         inline void set_current_collection(std::vector<T*>::iterator & array, long unsigned int index, 
-                                        std::vector<T*>::iterator & next_array_iter, long unsigned int next_index)
-            __attribute__((always_inline))
-            __attribute__((hot))
-            __attribute__((flatten))
-        {
+                                        std::vector<T*>::iterator & next_array_iter, long unsigned int next_index){
             ++this->collections;
 
             this->actual_array = *array;
@@ -351,19 +321,11 @@ class C_linked_list {
             this->reserve();
         }
 
-        void reserve()
-            __attribute__((always_inline))
-            __attribute__((hot))
-            __attribute__((flatten))
-        {
+        void reserve() {
             this->reserve(this->_size - (this->collections * this->_collection_size));
         }
 
-        void reserve(const uint rsize, bool set_actual=true)
-                    __attribute__((always_inline))
-                    __attribute__((hot))
-                    __attribute__((flatten)) 
-        {
+        void reserve(const uint rsize, bool set_actual=true) {
             this->_flags = (this->_flags | MAX_S);
 
             if(rsize > this->_size){
@@ -373,11 +335,7 @@ class C_linked_list {
             }
         }
 
-        void reserve_fibb(bool set_actual=true)
-                    __attribute__((always_inline))
-                    __attribute__((hot))
-                    __attribute__((flatten))
-        {
+        void reserve_fibb(bool set_actual=true){
             uint aux = this->_last_added;
 
             this->_last_added = this->_added;
@@ -385,11 +343,7 @@ class C_linked_list {
             this->reserve(this->_added += aux, set_actual);
         }
 
-        void reserve_new(bool set_actual=true)
-            __attribute__((always_inline))
-            __attribute__((hot))
-            __attribute__((flatten))
-        {
+        void reserve_new(bool set_actual=true) {
             this->_size += collections * this->_collection_size;
             ++this->size_coll;
 
@@ -403,11 +357,7 @@ class C_linked_list {
             }
         }
 
-        void reserve_new(int ncollections, bool set_actual = false)
-            __attribute__((always_inline))
-            __attribute__((hot))
-            __attribute__((flatten))
-        {
+        void reserve_new(int ncollections, bool set_actual = false) {
             T* new_array;
 
             this->_size += ncollections * this->_collection_size;

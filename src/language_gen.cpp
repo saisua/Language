@@ -15,8 +15,8 @@
 #define result 4
 #define struct 5
 
-#define base "\" COMMA \\\n\t\""
-#define base_type "\" COMMA \\\n\t\t\""
+#define base "\", \\\n\t\""
+#define base_type "\", \\\n\t\t\""
 
 #define tag_regex std::regex(Language_match_symbol "(.*?)" Language_match_symbol)
 

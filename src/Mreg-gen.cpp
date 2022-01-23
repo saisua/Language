@@ -334,17 +334,11 @@ class Mreg_gen : public Mreg<T>{
 	}
 
 	T append(const char* expression, const char* nickname, T id = 0){
-		// Check we have not added the same expression before
 		if(!this->added_ids.count(expression)){
 			this->added_ids[expression] = this->added_id;
 
 			T last_added_id = 0;
-			// If we have already added the nickname, 
-			// we will use the same id
-			//
-			// If we have not added the nickname
 			if(! this->added_nicknames.count(nickname)){
-				// If the id is given, we will use it
 				if(id != 0){
 					last_added_id = this->added_id;
 					this->added_id = id;
@@ -354,7 +348,6 @@ class Mreg_gen : public Mreg<T>{
 				this->added_nicknames[nickname] = this->added_id;
 				this->added_final_branches[this->added_id] = branch_t<T>();
 			} else{
-				// If the nickname was already used
 				last_added_id = this->added_id;
 
 				this->added_id = this->added_nicknames[nickname];
@@ -366,23 +359,19 @@ class Mreg_gen : public Mreg<T>{
 				printf("\n");
 			}
 
-			branch_t<T> branches = this->append(expression, false);
+			branch_t<T> branches = this->append(expression);
 
 
-			//printf("Adding %zu final nodes to id:%lu\n", branches.size(), this->added_id-1);
+			printf("Adding %zu final nodes to id:%lu\n", branches.size(), this->added_id-1);
 
-			this->added_final_branches[this->added_id].insert(
+			this->added_final_branches[this->added_id-1].insert(
 														branches.begin(), branches.end());
 
-			this->final_nicknames[std::string(nickname)] = this->added_final_branches[this->added_id];
+			this->final_nicknames[std::string(nickname)] = this->added_final_branches[this->added_id-1];
 
 			T aux = this->added_id;
 			if(last_added_id)
 				this->added_id = last_added_id;
-			else {
-				++this->added_id;
-				++this->data[NUM_ADDED];
-			}
 
 			return aux;
 		}
@@ -390,7 +379,7 @@ class Mreg_gen : public Mreg<T>{
 		return this->added_ids[expression];
 	}
 
-  	branch_t<T> append(const char* expression, bool update_id = true){
+  	branch_t<T> append(const char* expression){
 		// Delete any invalid pointers from
 		// last append
 		this->delete_pointers();
@@ -409,7 +398,7 @@ class Mreg_gen : public Mreg<T>{
 
 			this->data[MAX_REG_LENGTH] = expression_length;
 		}
-		this->contains_captures[this->added_id] = false;
+		this->contains_captures.push_back(false);
 
 		// Analize the expression
 		char **analized_ptr = this->_analize(expression);
@@ -425,7 +414,7 @@ class Mreg_gen : public Mreg<T>{
 		#define an_nlb_parenthesis 6u
 
 
-		std::stack<branch_t<T>> groups_start_branches {{{initial_position}}};
+		std::stack<branch_t<T>> groups_start_branches {{{node_length}}};
 		std::stack<char*> groups_start_expr {{*analized}};
 		std::stack<uint> parenthesis_type {{an_normal_parenthesis}};
 
@@ -435,11 +424,10 @@ class Mreg_gen : public Mreg<T>{
 		// It should not be possible, but just in case,
 		// add it so that it will affect an useless possition
 		char *last_expression = nullptr;
-		branch_t<T> branches {initial_position};
+		branch_t<T> branches {node_length};
 		branch_t<T> or_br {};
 
 		bool placed_literal = false;
-		bool had_captures = false;
 
 		while(split = *analized){
 			[[likely]];
@@ -594,7 +582,6 @@ class Mreg_gen : public Mreg<T>{
 					groups_start_branches.emplace(branches);
 					groups_start_expr.push(split);
 					parenthesis_type.push(an_normal_parenthesis);
-					had_captures = true;
 
 					++analized;
 
@@ -707,53 +694,52 @@ class Mreg_gen : public Mreg<T>{
 					break;
 
 				case an_warp:
-					if (placed_literal)
-					{
-						printf("Detected warp\n");
+					if(*(++analized))
+						if (placed_literal)
+						{
+							printf("Detected warp\n");
 
-						// Okay, here I'm going
-						// to repeat myself, and in fact
-						// the if inside the for is not even
-						// necessary. However, this is just to
-						// be future-proof, and it is not critical
-						this->new_start_group(branches);
-						had_captures = true;
+							// Okay, here I'm going
+							// to repeat myself, and in fact
+							// the if inside the for is not even
+							// necessary. However, this is just to
+							// be future-proof, and it is not critical
+							this->new_start_group(branches);
 
-						for(T node : branches){
-							if(this->data[node + WARP_CAPTURES])
-								[[likely]]
-								reinterpret_cast<capture_t<T>*>(
-									this->data[node + WARP_CAPTURES])->push_front(0);
-							else
-								this->data[node + WARP_CAPTURES] = reinterpret_cast<T>(new capture_t<T>{0});
-						
-							printf("WARP PTR %d: %d\n", node, this->data[node + WARP_CAPTURES]);
+							for(T node : branches){
+								if(this->data[node + WARP_CAPTURES])
+									[[likely]]
+									reinterpret_cast<capture_t<T>*>(
+										this->data[node + WARP_CAPTURES])->push_front(0);
+								else
+									this->data[node + WARP_CAPTURES] = reinterpret_cast<T>(new capture_t<T>{0});
+							
+								printf("WARP PTR %d: %d\n", node, this->data[node + WARP_CAPTURES]);
+							}
+
+							//branches = {node_length};
 						}
+						else{
+							// No need for now, since it just ensures it concatenates
+							/*
+							printf("Detected warp of");
 
-						//branches = {node_length};
-					}
-					else{
-						// No need for now, since it just ensures it concatenates
-						/*
-						printf("Detected warp of");
+							branches.clear();
 
-						branches.clear();
+							while(*++split){			
+								printf(" %d", *split);
 
-						while(*++split){			
-							printf(" %d", *split);
+								branch_t<T> final_nodes = this->added_final_branches[*split];
+									
+								branches.insert(final_nodes.begin(), final_nodes.end());
+							}
+							printf("\n  (%d set branches)\n", branches.size());
 
-							branch_t<T> final_nodes = this->added_final_branches[*split];
-								
-							branches.insert(final_nodes.begin(), final_nodes.end());
+							for(T node : branches){
+								this->data[node+WARP_CAPTURES] |= ~this->semiwarp_mask;
+							}
+							*/
 						}
-						printf("\n  (%d set branches)\n", branches.size());
-
-						for(T node : branches){
-							this->data[node+WARP_CAPTURES] |= ~this->semiwarp_mask;
-						}
-						*/
-					}
-					++analized;
 					
 					continue;
 					
@@ -780,8 +766,6 @@ class Mreg_gen : public Mreg<T>{
 				switch (parenthesis_type.top())
 				{
 				case an_normal_parenthesis:
-					had_captures = true;
-
 					
 					this->new_start_group(branches);
 					break;
@@ -819,10 +803,10 @@ class Mreg_gen : public Mreg<T>{
 				this->new_end_group(branches);
 
 
-			// In case we need to loop back or merge optional
-			// expressions (?, *), we need to keep track of
-			// what nodes were last time.
-			last_last_br.clear();
+				// In case we need to loop back or merge optional
+				// expressions (?, *), we need to keep track of
+				// what nodes were last time.
+				last_last_br.clear();
 			last_last_br.insert(last_branches.begin(), last_branches.end());
 			last_branches.clear();
 			last_branches.insert(branches.begin(), branches.end());
@@ -869,16 +853,11 @@ testing_do_not_generate:
 
 
 		#if FRB_VERBOSE
-		printf("\nAdded new expression with id:%u\n%s###\n\n", this->added_id,
-						had_captures ? "  which had captures\n" : "");
+		printf("\nAdded new expression with id:%u\n###\n\n", this->added_id);
 		#endif
 
-		if(update_id){
-			++this->data[NUM_ADDED];
-			++this->added_id;
-		}
-		if(!this->contains_captures.count(this->added_id) || had_captures)
-			this->contains_captures[this->added_id] = had_captures;
+		++this->data[NUM_ADDED];
+		++this->added_id;
 
 		this->data[SIZE] = this->data.size();
 
@@ -929,11 +908,10 @@ testing_do_not_generate:
 
 		for(T node : br){
 			[[likely]];
-			//printf("%d, %d, %d, %d\n", node, node + letter + char_offset, this->data.size(), this->data[node + letter + char_offset]);
 
 			// If the letter in node does not route to
 			// any other node (aka is empty):
-			if(!this->data[static_cast<T>(node+letter+char_offset)]){
+			if(!this->data[node+letter+char_offset]){
 				// If "to" was 0, and exists any letter that is
 				// empty, generate a new node to merge any other
 				// empty letters to. If all were occupied,

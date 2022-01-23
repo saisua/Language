@@ -20,6 +20,8 @@
 // with other generated definitions of gcc
 // since we should not have lower case definitions
 #define code_pref "_code_"
+#define data_structure "data_struct"
+#define label_pref "_label_"
 
 std::string read_str_file(const std::string& filename);
 json11::Json get_object_from_path(json11::Json & doc, const std::string & path);
@@ -41,13 +43,15 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
     std::fstream out;
     std::fstream current_language;
 
+    std::string current_language_path = LANG_DEFINITION_FOLDER "codes//" LANG_FROM ".h";
+
     current_language.open(LANG_LANGUAGES_FOLDER "current_language.h", std::ios_base::app);
     current_language << "#include \"";
-    current_language << LANG_DEFINITION_FOLDER "codes//" LANG_FROM ".h";
+    current_language << current_language_path;
     current_language << "\"\n";
     current_language.close();
 
-    out.open(LANG_DEFINITION_PATH "codes//" LANG_FROM ".h", std::ios::out);
+    out.open(current_language_path, std::ios::out);
 
     {
     std::string ward_start = "#ifndef LANG_DEFINITION_CODES_H\n#define LANG_DEFINITION_CODES_H\n\n";
@@ -63,7 +67,7 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
     uint max_depth = 0;
     for (auto nickname_pair : data.added_nicknames)
     {
-        uint total_depth = count(nickname_pair.first.begin(), nickname_pair.first.end(), '_');
+        uint total_depth = count(nickname_pair.first.begin(), nickname_pair.first.end(), LANG_PATH_SEPARATOR);
 
         if(total_depth > max_depth)
             max_depth = total_depth;
@@ -77,7 +81,7 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
         std::stack<std::string> codes_stack = std::stack<std::string>();
         for (uint letter = 0; letter != nickname.length(); ++letter)
         {
-            if (*nick == '_'){
+            if (*nick == LANG_PATH_SEPARATOR){
 
                 std::string current = nickname.substr(0, letter);
                 codes_stack.emplace(current);
@@ -92,7 +96,7 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
             ++nick;
         }
 
-        uint depth = count(nickname.begin(), nickname.end(), '_');
+        uint depth = count(nickname.begin(), nickname.end(), LANG_PATH_SEPARATOR);
         codes_stack.emplace(nickname);
         while(!codes_stack.empty()){
 
@@ -331,14 +335,6 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
 void update_mreg(Mreg_gen<uintptr_t> &mreg, std::string nickname, uintptr_t new_code){
     uintptr_t old_code = mreg.added_nicknames[nickname];
     mreg.added_nicknames[nickname] = new_code;
-    mreg.contains_captures[new_code] = mreg.contains_captures[old_code];
-    mreg.contains_captures.erase(old_code);
-
-    for(auto & pair : mreg.added_ids){
-        if(pair.second == old_code){
-            pair.second = new_code;
-        }
-    }
 
     printf("Updating mreg code %d -> %d\n", old_code, new_code);
 
@@ -346,24 +342,15 @@ void update_mreg(Mreg_gen<uintptr_t> &mreg, std::string nickname, uintptr_t new_
     {
         mreg.data[branch + FINAL] = new_code;
     }
-
-    const uint max_size = mreg.data.size() - offset_positions;
-    for (uint node = initial_position; node != max_size; node += node_length)
-    {
-        if(mreg.data[node+WARP_CAPTURES] >> mreg.captures_shift){
-            capture_t<uintptr_t> * capture_list = reinterpret_cast<capture_t<uintptr_t> *>(
-                                                    mreg.data[node + WARP_CAPTURES]);
-
-                                                
-            printf("  check in node %d (0x%X)[%d]\n", node, mreg.data[node+WARP_CAPTURES], capture_list->size());
-            for (uintptr_t &capture : *capture_list)
+    for(uint node = node_length; node < mreg.data.size(); node += node_length)
+        if(mreg.data[node+WARP_CAPTURES] >> mreg.captures_shift)
+            for(uintptr_t & capture : *reinterpret_cast<capture_t<uintptr_t>*>(
+                                                            mreg.data[node+WARP_CAPTURES]) )
                 if(abs(capture) == old_code){
                     capture = capture > 0 ? new_code : -new_code;
 
                     printf("  Updated node %d\n", node);
                 }
-        }
-    }
 
     mreg.all_states.insert(new_code);
 }
@@ -379,8 +366,15 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
     json11::Json language = files[Language_id-1];
 
     std::string definitions = "";
-    std::string switch_cases = "#define definition_generated \\\n";
-    std::string translation_code = "#define COMMA ,\n\n";
+    std::string new_group_code = "#define next_group if(todo_jump.empty()) \\\n\tgoto end_definition_label; \\\n"
+                                    "{ \\\nvoid * next = todo_jump.top(); \\\n"
+                                    "todo_jump.pop(); \\\n"
+                                    "mreg = todo_mreg.top(); \\\n"
+                                    "todo_mreg.pop(); \\\n"
+                                    "goto *next; \\\n}";
+    std::string switch_cases = "#define definition_generated(" data_structure ") \\\n switch(" data_structure "[0]){ \\\n";
+    std::string translation_code = "";
+    std::string final_code = "";
     
 
     // This maps a nickname to its corresponding capture groups.
@@ -502,10 +496,19 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
         }
         printf(" from translation:\n  %s\n", nickname_pair.first.c_str());
 
-        std::string case_id = std::string(nickname_pair.first);
+        std::string case_id (nickname_pair.first);
+
+        uint start;
+
+        {
+        start = 1 + atoi(find_last_in_tree(translation, case_id, "__merges__").c_str());
+        }
 
         prettify_definition(case_id);
-        switch_cases += ("case " code_pref + case_id +": \\\n");
+        switch_cases += ("case " code_pref + case_id +": \\\n\tfinal_label = &&" + label_pref + case_id + "; \\\n\t"+
+                        "start = " + start + "; \\\n\tbreak; \\\n");
+        final_code += label_pref + case_id + ": \\\n\t";
+        // in switch_cases apply switch-goto
         bool first_in_switch = true;
 
         // Check for sub-group types
@@ -538,7 +541,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                 printf(" ~ Reached end of object %d/%d.\n", seen, active.object_items().size());
                 if(depth){
                     --depth;
-                    switch_cases += "\t} \\\n";
+                    final_code += "\t} \\\n";
                 }
 
                 conditions.pop();
@@ -600,7 +603,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
                     prettify_definition(print_path);
 
-                    switch_cases += std::string(depth + 1, '\t') + "translation_" + print_path + "; \\\n";
+                    final_code += std::string(depth + 1, '\t') + "translation_" + print_path + "; \\\n";
 
                     translation_code += "#define translation_" + print_path;
 
@@ -613,23 +616,22 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                     {
                         solve_code(final_code, language_patterns, language);
 
-                        tmp_code += " \\\n\t\"" + final_code + "\" COMMA";
+                        tmp_code += " \\\n\t\"" + final_code + "\",";
                     }
-                    for(char _ : "COMMA")
-                        tmp_code.pop_back();
+                    tmp_code.pop_back();
 
                     uint code_size = std::count(tmp_code.begin(), tmp_code.end(), '\n');
 
-                    translation_code += " \\\n\tadd_line<" +
-                                        std::to_string(code_size) + 
-                                        ">({" + tmp_code + "})\n";
+                    translation_code += " \\\n\tadd_line<"+
+                                            std::to_string(code_size)+
+                                            ">({" + tmp_code + "})\n";
                 }
 
                 // There should always be depth > 0, but just in case
                 if(depth){
                     --depth;
 
-                    switch_cases += std::string(depth+1, '\t') + "} \\\n";
+                    final_code += std::string(depth+1, '\t') + "} \\\n";
 
                     conditions.pop();
                     objects_seen.pop();
@@ -731,23 +733,23 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                     printf("Detected (obj %d) path %s in file %d\n", seen, get_path(group_pair.first, id).c_str(), id);
 
                     if(depth == 0 && seen == 0 && !first_in_switch){
-                        switch_cases += std::string(depth+1, '\t');
-                        switch_cases += "pos = root; \\\n";
+                        final_code += std::string(depth+1, '\t');
+                        final_code += "pos = root; \\\n";
                     }
                     first_in_switch = false;
-                    switch_cases += std::string(depth+1, '\t');
+                    final_code += std::string(depth+1, '\t');
                     if(seen == 0)
-                        switch_cases += "if(";
+                        final_code += "if(";
                     else
-                        switch_cases += "else if(";
+                        final_code += "else if(";
 
 
-                    switch_cases += "data[data[";
+                    final_code += data_structure "[" data_structure "[";
 
                     std::vector<std::string> found_sub_conditions {};
 
                     uint last = 0, pos = 0;
-                    while((pos = condition.find('_', last)) < condition.size()){
+                    while((pos = condition.find(LANG_PATH_SEPARATOR, last)) < condition.size()){
                         found_sub_conditions.push_back(condition.substr(last, pos-last));
 
                         last = pos+1;
@@ -773,7 +775,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                         bool first = true;
                         for(; rit != found_sub_conditions.crend(); ++rit){
                             if(! first)
-                                switch_cases += "data[";
+                                final_code += data_structure "[";
                             else
                                 first = false;
 
@@ -782,16 +784,16 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                             sub_condition += active_path + "_" + *rit;
 
                             prettify_definition(sub_condition);
-                            switch_cases += sub_condition + " + ";
+                            final_code += sub_condition + " + ";
                         }
 
                         /*
                         if(from_root)
-                            switch_cases += "root";
+                            final_code += "root";
                         else*/
-                        switch_cases += "pos";
+                        final_code += "pos";
 
-                        switch_cases += std::string(found_sub_conditions.size()-1, ']');
+                        final_code += std::string(found_sub_conditions.size()-1, ']');
                     } else {
                         //if (active_path.rfind("standalones", 0) == 0)
                         sub_condition += "definition_";
@@ -799,10 +801,10 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                         sub_condition += active_path + "_" + condition;
 
                         prettify_definition(sub_condition);
-                        switch_cases += sub_condition + " + pos";
+                        final_code += sub_condition + " + pos";
                     }
 
-                    switch_cases += "]] ";
+                    final_code += "]] ";
 
                     std::string path;
                     std::smatch match;
@@ -820,11 +822,11 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
                             // If it is a parent (not max depth) I need to & slice the id 
                             if( ! max_depth_codes.count(path))
-                                switch_cases += "& " code_pref + path + "_mask == ";
+                                final_code += "& " code_pref + path + "_mask == ";
                             else
-                                switch_cases += "== ";
+                                final_code += "== ";
 
-                            switch_cases += code_pref + path + "){ \\\n" + std::string(depth + 2, '\t') + "pos = root; \\\n";
+                            final_code += code_pref + path + "){ \\\n" + std::string(depth + 2, '\t') + "pos = root; \\\n";
 
                             break;
                             
@@ -839,11 +841,11 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
                             // If it is a parent (not max depth) I need to & slice the id 
                             if( ! max_depth_codes.count(path))
-                                switch_cases += "& " code_pref + path + "_mask == ";
+                                final_code += "& " code_pref + path + "_mask == ";
                             else
-                                switch_cases += "== ";
+                                final_code += "== ";
 
-                            switch_cases += code_pref + path + "){ \\\n";
+                            final_code += code_pref + path + "){ \\\n";
 
                             break;
 
@@ -861,11 +863,11 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
                                 // If it is a parent (not max depth) I need to & slice the id 
                                 if( ! max_depth_codes.count(path))
-                                    switch_cases += "& " code_pref + path + "_mask == ";
+                                    final_code += "& " code_pref + path + "_mask == ";
                                 else
-                                    switch_cases += "== ";
+                                    final_code += "== ";
 
-                                switch_cases += code_pref + path + "){ \\\n";
+                                final_code += code_pref + path + "){ \\\n";
 
                                 break;
                             }
@@ -878,11 +880,11 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
                             // If it is a parent (not max depth) I need to & slice the id 
                             if( ! max_depth_codes.count(path))
-                                switch_cases += "& " code_pref + path + "_mask == ";
+                                final_code += "& " code_pref + path + "_mask == ";
                             else
-                                switch_cases += "== ";
+                                final_code += "== ";
 
-                            switch_cases += code_pref + path +"){ \\\n";
+                            final_code += code_pref + path +"){ \\\n";
 
                             path_seen.push(active_path);
                             break;
@@ -890,7 +892,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
 
                     if(set_pos)
-                        switch_cases += std::string(depth + 2, '\t') + "pos = data[" + sub_condition + " + pos]; \\\n";
+                        final_code += std::string(depth + 2, '\t') + "pos = " data_structure "[" + sub_condition + " + pos]; \\\n";
 
                         ++depth;
                     }
@@ -900,20 +902,21 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
         switch_cases += "\tbreak; \\\n";
     }
-    switch_cases += "\n";
+    switch_cases += "\n}";
 
     printf("END\n"); fflush(stdout);
 
     std::fstream current_language;
 
+    std::string current_language_path = LANG_DEFINITION_FOLDER "generated//" LANG_FROM ".h";
     current_language.open(LANG_LANGUAGES_FOLDER "current_language.h", std::fstream::app);
     current_language << "#include \"";
-    current_language << LANG_DEFINITION_FOLDER "generated//" LANG_FROM ".h";
+    current_language << current_language_path;
     current_language << "\"\n";
     current_language.close();
 
     std::fstream out;
-    out.open(LANG_DEFINITION_PATH "generated//" LANG_FROM ".h", std::ios::out);
+    out.open(current_language_path, std::ios::out);
 
     {
     std::string ward_start = "#ifndef LANG_DEFINITION_GENERATED_H\n#define LANG_DEFINITION_GENERATED_H\n\n";
@@ -923,21 +926,25 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
     out.write(definitions.c_str(), definitions.length());
     out.write("\n", 1);
     out.write(switch_cases.c_str(), switch_cases.length());
+    out.write("\n", 1);
+    out.write(final_code.c_str(), final_code.length());
 
     std::string ward_end = "\n#endif\n\n";
     out.write(ward_end.c_str(), ward_end.length());
 
     out.close();
+
+    current_language_path = LANG_TRANSLATION_FOLDER "code_groups//" LANG_TO ".h";
     
     current_language.open(LANG_LANGUAGES_FOLDER "current_language.h", std::ios_base::app);
     current_language << "#include \"";
-    current_language << LANG_TRANSLATION_FOLDER "code_groups//" LANG_TO ".h";
+    current_language << current_language_path;
     current_language << "\"\n";
     current_language.close();
 
     std::fstream translation_out;
 
-    translation_out.open(LANG_TRANSLATION_PATH "code_groups//" LANG_TO ".h", std::ios::out);
+    translation_out.open(current_language_path, std::ios::out);
 
     translation_out.write(translation_code.c_str(), translation_code.length());
 

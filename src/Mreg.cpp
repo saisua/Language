@@ -64,7 +64,14 @@ using regex=Fregex;
 #endif
 
 
+// First char is not 7, but this way
+// we can save on some cycles,
+// since we don't have to "remap"
+// chars. First char is actually 32
+// Defined both, so the first_char
+// is for cache optimizations
 #define first_char 32u
+// Must never be 0
 #define start_match_char  5u
 #define last_char 127u
 #define control_positions 5u
@@ -72,14 +79,7 @@ using regex=Fregex;
 // so that when accessed we can just shave of
 // some control positions unused for free
 #define offset_positions (first_char - control_positions)
-// Initial position should be (4u - offset_positions)
-// since then it would start at 4, but
-// because it is a negative number,
-// gcc tries to keep a large number instead
-// of overflowing the integer, that is what
-// we want
-#define initial_position 0u
-#define reserved_data_size 32768u
+#define reserved_data_size 2^15
 
 #define char_offset (control_positions - start_match_char)
 
@@ -174,19 +174,8 @@ inline bool is_regex(const char* expr){
 	return *(expr-1) == '\\' && !(*(expr-1) == '\\' && ! isalpha(*expr));
 }
 
-#ifdef FRB_CONSTEXPR_DATA_LEN
-#if FRB_CONSTEXPR_DATA_LEN >= 4294967296
-using mreg_t = uint64_t;
-#elif FRB_CONSTEXPR_DATA_LEN >= 65536
-using mreg_t = uint32_t;
-#else
-using mreg_t = uint16_t;
-#endif
 
-template <typename T = mreg_t>
-#else
 template <typename T>
-#endif
 class Mreg{
 	// Not all should be public, but I have yet to look up
 	// how to make some variables only accessable from child
@@ -194,13 +183,8 @@ class Mreg{
 	// Take note of which pointers have been deleted
 	std::unordered_set<T> deleted;
 	std::list<capture_t<T>*> unknown_ptrs;
-
-	std::unordered_map<T, bool> contains_captures
-	#ifdef FRB_CONSTEXPR_DATA
-						= std::unordered_map<T, bool>({ FRB_CONSTEXPR_CONTAINS_CAPTURES });
-	#else
-								;
-	#endif
+	
+	std::vector<bool> contains_captures;
 	std::vector<T> nodes_captures;
 	std::vector<const char*> str_captures;
 	std::vector<const char*> str_starts;
@@ -235,13 +219,12 @@ class Mreg{
 	Mreg()
 	{
 #ifndef FRB_CONSTEXPR_DATA
-		this->data = std::vector<T>(initial_position + offset_positions + node_length, 0);
+		this->data = std::vector<T>(node_length * 2, 0);
 		this->data.reserve(reserved_data_size);
-
-		this->contains_captures = std::unordered_map<T, bool>();
 #endif
 		this->states = std::vector<T>();
 
+		this->contains_captures = std::vector<bool>();
 		this->nodes_captures = std::vector<T>();
 		this->str_captures = std::vector<const char *>();
 		this->str_starts = std::vector<const char *>();
@@ -250,7 +233,7 @@ class Mreg{
 
 		this->nodes_data_captures = std::unordered_set<T>();
 
-		//this->contains_captures.push_back(false);
+		this->contains_captures.push_back(false);
 
 		this->result_subgr = C_linked_list<uintptr_t>();
 		this->result_subgr.reserve();
@@ -279,7 +262,7 @@ class Mreg{
 		this->deleted = std::unordered_set<T> {};
 		#endif
 
-		const size_t max_size = this->data.size() - offset_positions;
+		const size_t max_size = this->data.size();
 	
 		#if FRB_VERBOSE
 		printf("\n\n### DELETING\n\t");
@@ -288,9 +271,7 @@ class Mreg{
 		uint count = 0;
 		#endif
 
-		printf("%d to %d (%d %d)\n\t", initial_position, max_size, node_length, (max_size-initial_position)%node_length);
-
-		for(uint node = initial_position; node != max_size; node += node_length){
+		for(uint node = node_length; node != max_size; node += node_length){
 			if(this->nodes_data_captures.count(node))
 				continue;
 
@@ -370,7 +351,7 @@ class Mreg{
 	}
 	#endif
 
-	std::string str(const uint node=initial_position){
+	std::string str(const uint node=node_length){
 		std::string result = "[";
 
 		#if FRB_VERBOSE
@@ -398,7 +379,7 @@ class Mreg{
 		return result;
 	}
 	
-	const char* c_str(const uint node=initial_position){
+	const char* c_str(const uint node=node_length){
 		return this->str(node).c_str();
 	}
 
@@ -433,7 +414,7 @@ class Mreg{
 	
 		uint capture_cell;
 
-		for(uint node = initial_position; node != max_size; node += node_length){
+		for(uint node = node_length-offset_positions; node != max_size; node += node_length){
 			// If the node is a reallocated capture node, no need 
 			// to iterate over it
 
@@ -462,15 +443,6 @@ class Mreg{
 						uint prev_size = captures->size();
 						captures->remove(0);
 						bool has_warp = captures->size() != prev_size;
-
-						if(! captures->size()){
-							printf("\tWarp only node\n");
-
-							this->data[node + WARP_CAPTURES] = this->warp_mask;
-							capture_data_start[this->data[node + WARP_CAPTURES]] = this->warp_mask;
-							
-							continue;
-						}
 
 						captures->sort();
 						captures->reverse();
@@ -515,17 +487,14 @@ class Mreg{
 						printf("\t\t Contains %zu capture nodes\n\t  [", capture_cell, captures->size());
 						#endif
 						
+						capture_data_start[this->data[node+WARP_CAPTURES]] = capture_cell << this->captures_shift;
 						this->data[capture_cell] = captures->size();
 
 						// Take note the new direction assigned
+						this->data[node+WARP_CAPTURES] = capture_cell << this->captures_shift;
 						if(has_warp){
-							this->data[node + WARP_CAPTURES] = (capture_cell << this->captures_shift) | this->warp_mask;
-							capture_data_start[this->data[node + WARP_CAPTURES]] =
-																(capture_cell << this->captures_shift) | this->warp_mask;
-						} else {
-							this->data[node + WARP_CAPTURES] = capture_cell << this->captures_shift;
-							capture_data_start[this->data[node + WARP_CAPTURES]] =
-																capture_cell << this->captures_shift;
+							this->data[node + WARP_CAPTURES] |= this->warp_mask;
+							capture_data_start[this->data[node + WARP_CAPTURES]] |= this->warp_mask;
 						}
 
 						for(long int captured_node : *captures){
@@ -772,7 +741,26 @@ class Mreg{
 	}
 
 	inline void generate_constexpr(std::ostream & out_stream){
-		this->generate_constexpr<T>(out_stream);
+		#if FRB_VERBOSE
+		printf("Generating constexpr...\n");
+		#endif
+
+		std::string file = "#ifndef FRB_CONSTEXPR_DATA_H\n#define FRB_CONSTEXPR_DATA_H\n\n"
+						   "#define FRB_CONSTEXPR_DATA_LEN " +
+						   std::to_string(this->data.size()) + "\n\n";
+
+		file += "#define FRB_CONSTEXPR_DATA \\\n";
+
+		#define values_nl 5
+		for(uintptr_t i = 0; i != this->data.size(); ++i){
+			file += std::to_string(this->data[i]) + ", ";
+			if(i % values_nl == values_nl - 1)
+				file += "\\\n";
+		}
+
+		file += "\n\n#endif\n";
+
+		out_stream << file;
 	}
 
 	template<typename out_t>
@@ -795,10 +783,6 @@ class Mreg{
 			if(i % values_nl == values_nl - 1)
 				file += "\\\n";
 		}
-		file += "\n\n#define FRB_CONSTEXPR_CONTAINS_CAPTURES \\\n";
-		for(auto & cap : this->contains_captures){
-			file += "{ " + std::to_string(cap.first) + ", " + std::to_string(cap.second) + " }, \\\n";
-		}	
 
 		file += "\n\n#endif\n";
 
@@ -808,7 +792,7 @@ class Mreg{
 	void restore_captures(){
 		this->contains_captures.insert(
 				this->contains_captures.cend(), this->added_id+1, false);
-		const size_t max_size = this->data.size() - offset_positions;
+		const size_t max_size = this->data.size();
 
 		#if FRB_VERBOSE
 		printf("Restoring captures in %d positions:\n", max_size);
@@ -816,7 +800,7 @@ class Mreg{
 		std::unordered_set<uint> seen = std::unordered_set<uint>();
 		#endif
 
-		for(uint node = initial_position; node != max_size; node += node_length){
+		for(uint node = node_length; node != max_size; node += node_length){
 			if (this->data[node] == CAPTURE_NODE)
 			{
 				#if FRB_VERBOSE
@@ -868,13 +852,16 @@ class Mreg{
 		this->data[SIZE] = this->data.size(); 
 	}
 
-	inline T count_sorted(T node, const T value)
+	template<T node>
+	inline T count_sorted(const T value) noexcept
 		__attribute__ ((const))
 		#if !FRB_PROFILE
 		__attribute__ ((always_inline))
 		#endif
 		__attribute__ ((hot))
 	{
+		[[ assert : (node < this->data.size()) ]]
+
 		#if FRB_VERBOSE
 		printf("CS[%u,%d|%u]:", node, this->data[node], value);
 		#endif
@@ -919,13 +906,16 @@ class Mreg{
 		return result;
 	}
 
-	inline T count_sorted_backw(T node, const T value)
+	template<T node>
+	inline T count_sorted_backw(const T value) noexcept
 		__attribute__ ((const))
 		#if !FRB_PROFILE
 		__attribute__ ((always_inline))
 		#endif
 		__attribute__ ((hot))
 	{
+		[[ assert : (node < this->data.size()) ]]
+
 		#if FRB_VERBOSE
 		printf("CSB[%u,%d|%u]:", node, this->data[node], value);
 		#endif
@@ -976,224 +966,19 @@ class Mreg{
 		return result;
 	}
 
-	T match(const char * str)
-		# if !FRB_PROFILE
-		//__attribute__ ((always_inline))
-		//__attribute__ ((flatten))
-		#endif
-		//__attribute__ ((hot))
-		// Should it have a const attribute?
-		
-	{
-		// In the future, it could be added a find() 
-		// to improve efficiency in the not-so-rare case of
-		// any of . and + or * followed by a unique char
-		// Pex "\(.*?\)" instead of just iterating over the string,
-		// find the next character, without any vector access.
-		// Is it worth it? Not hard to implement, but it would mean
-		// Another access per char.
-		// Maybe since capture start & end happens not so often, 
-		// I could add a control position of (capture or find)
-		// and in case of being true, check both. It could allow me
-		// to add improvements about corner cases, without affecting
-		// performance too much. I think i will do so
-		// Is there a way to check for \d & \w too? 
-		// Something like hash matching?
-
-		// To capture data, add an array of vector and keep adding 
-		// points of start & finish of any possible match, when
-		// node+start_capture and node+end_capture. 
-		T mreg = initial_position;
-
-		this->nodes_captures.clear();
-		this->str_captures.clear();
-
-		#if FRB_VERBOSE
-		printf("match start %c, 0x%x\n", *str, this->data[mreg+*str+char_offset]);
-
-		T last_id = mreg;
-
-		std::list<char> restart_str = std::list<char>();
-		#endif
-
-		// Profiler: this is match()
-
-		// Not necessary, but tell the compiler that data
-		// is important and must be cached from that address
-		__builtin_prefetch(&this->data[initial_position+WARP_CAPTURES]);
-
-		#if !PLAIN_FRB_MATCH
-		// If contains any captures in the initial node
-		if(this->data[mreg+WARP_CAPTURES]){
-			#if FRB_VERBOSE
-			printf("Detected captures in node %u [%X]\n", mreg, this->data[mreg+WARP_CAPTURES]);
-			
-			restart_str.push_back(*str);
-			#endif	
-			this->nodes_captures.push_back(this->data[mreg+WARP_CAPTURES]);
-			this->str_captures.push_back(str);
-		}
-		#endif
-
-		while(*str && (mreg = this->data[mreg+*str+char_offset])){
-			#if FRB_VERBOSE
-			printf("match %c (%i)\n", *str, *str);
-			
-			printf("%u -> %u\n", last_id, mreg);
-			last_id = mreg;
-			#endif
-			
-			#if !PLAIN_FRB_MATCH
-			if(this->data[mreg+WARP_CAPTURES]){
-				#if FRB_VERBOSE
-				printf("Detected captures in node %u [%u]\n", mreg, this->data[mreg+WARP_CAPTURES]);
-			
-				restart_str.push_back(*str);
-				#endif
-				this->nodes_captures.push_back(this->data[mreg+WARP_CAPTURES]);
-				this->str_captures.push_back(str);
-			}
-			#endif
-
-			++str;
-		}
-
-		const T final = this->data[mreg+FINAL];
-
-		#if FRB_VERBOSE
-			printf("mat2 - id: %u\nEnd: %s\n", final, this->c_str(mreg));
-
-		#endif
-
-		if((!*str) && final){ [[likely]];
-			#if !PLAIN_FRB_MATCH
-			if(! this->contains_captures[final]){
-				#if FRB_VERBOSE
-				printf("Id %u does NOT contain captures.\n", final);
-				#endif
-
-				return final;
-			}
-
-			typename
-			std::vector<T>::const_iterator nodes_iter = this->nodes_captures.cbegin();
-			
-			typename
-			std::vector<T>::const_iterator nodes_end = this->nodes_captures.cend();
-			
-			std::vector<const char*>::const_iterator str_iter = this->str_captures.cbegin();
-			
-			#if FRB_VERBOSE
-			std::list<char>::const_iterator print_iter = restart_str.cbegin();
-			#endif
-
-			{
-
-			T starting_captures = 0;
-			// The first node with should only have starting captures, 
-			// find the first containing final
-			for(; nodes_iter != nodes_end && !starting_captures; ++nodes_iter, ++str_iter){
-				// Search in reverse because starting groups are positive
-				starting_captures = this->count_sorted_backw(*nodes_iter, final);
-				#if FRB_VERBOSE
-				printf("SC: %u\n", starting_captures);
-				
-				++print_iter;
-				#endif
-			}
-
-			// Should be removed. Either contains_captures is wrong, or
-			// checking for starting captures is somehow wrong.
-			if(! starting_captures){
-				#if FRB_VERBOSE
-				printf("[-]Contains captures was true, but we did not find any captures\n");
-				#endif
-
-				return -1;
-			}
-			#if FRB_VERBOSE
-			printf(" Start capture in char: %c\n", *print_iter);
-			++print_iter;
-			#endif
-
-			T starts = 0;
-			for(; starting_captures; --starting_captures, ++starts)
-				this->str_starts.push_back(*str_iter);
-			
-			std::string buffer = std::string();
-			const char* group_start;
-			char *subStr;
-
-			T new_groups, char_dist;
-
-			// We can do while because we have not returned,
-			// so, at least once we have to search for starting/final nodes
-			while(nodes_iter != nodes_end){
-				for(new_groups = this->count_sorted(*nodes_iter, -final); 
-							new_groups; --new_groups){
-					group_start = this->str_starts.back();
-					this->str_starts.pop_back();
-					
-					subStr = static_cast<char*>(
-						calloc(std::distance(group_start, *str_iter), sizeof(char))); 
-					memcpy(subStr, group_start, std::distance(group_start, *str_iter));
-
-					#if FRB_VERBOSE
-					printf(" End capture in char: %c\n", *print_iter);
-
-					printf("----%s-\n", subStr);
-					#endif
-				}
-
-				for(new_groups = this->count_sorted_backw(*nodes_iter, final); new_groups; --new_groups){
-					this->str_starts.push_back(*str_iter);
-					
-					#if FRB_VERBOSE
-					printf(" Start capture in char: %c\n", *print_iter);
-					#endif
-				}
-				
-				++str_iter;
-				++nodes_iter;
-				#if FRB_VERBOSE
-				++print_iter;
-				#endif
-			}
-
-			#if FRB_VERBOSE
-			if(this->str_starts.size())
-				printf("# End of the string\n");
-			#endif
-
-			for(const char* last_str : this->str_starts){
-				subStr = static_cast<char*>(
-						calloc(std::distance(last_str, str), sizeof(char))); 
-				memcpy(subStr, last_str, std::distance(last_str, str));
-
-				#if FRB_VERBOSE
-				printf("----%s-\n", subStr);
-				#endif
-			}
-
-			this->str_starts.clear();
-	
-			}
-			#endif
-			return final;
-		}
-
-		return 0;
-	}
-
-	uint match_and_subgroups(const char * str)
+	T match(const char * str) noexcept
 		# if !FRB_PROFILE
 		__attribute__ ((always_inline))
 		__attribute__ ((flatten))
 		#endif
 		__attribute__ ((hot))
+		// Should it have a const attribute?
+		
 	{
-		// profiler: this is match_and_subgroups
-		T mreg = initial_position;
+		[[ expects : str != nullptr ]]
+		[[ ensures mreg : mreg < this->data.size()]]
+
+		T mreg = node_length;
 
 		this->nodes_captures.clear();
 		this->str_captures.clear();
@@ -1206,6 +991,8 @@ class Mreg{
 
 		std::list<char> restart_str = std::list<char>();
 		#endif
+
+		// Profiler: this is match()
 
 		// Not necessary, but tell the compiler that data
 		// is important and must be cached from that address
@@ -1228,7 +1015,6 @@ class Mreg{
 			//printf("start %c %d\n", *str, *(str+1));
 		while(this->data[mreg+*str+char_offset] && (mreg = this->data[mreg+*str+char_offset])){
 			[[likely]];
-
 // This is in case there
 // is a warp
 in_loop:
@@ -1248,7 +1034,7 @@ in_loop:
 
 					this->warps.push(mreg);
 					this->str_warps.push(str);
-					mreg = initial_position;
+					mreg = node_length;
 
 					if(this->data[mreg+WARP_CAPTURES] >> 1){
 						#if FRB_VERBOSE
@@ -1314,150 +1100,27 @@ in_loop:
 		}
 
 		}while(1);
-		// Here I need to check for warps. However,
-		// since it is not yet implemented, just break
 
 end_loop:
-
-		const T final = this->data[mreg+FINAL];
-
 		#if FRB_VERBOSE
-			printf("mat2 - id: %u\nEnd: %s\n", final, this->c_str(mreg));
-
+		printf("mat2 - id: %u\nEnd: %s\n", this->data[mreg+FINAL], this->c_str(mreg));
 		#endif
 
-		if((!*str) && final){ [[likely]];
-			#if !PLAIN_FRB_MATCH
-			if(! this->contains_captures[final]){
-				[[unlikely]];
-				
-				#if FRB_VERBOSE
-				printf("Id %u does NOT contain captures.\n", final);
-				#endif
-
-				*this->result_subgr.append_position() = final;
-
-				return final;
-			}
-			uintptr_t *pos_array = this->result_subgr.append_node(2);
-			*pos_array = final;
-
-			typename
-			std::vector<T>::const_iterator nodes_iter = this->nodes_captures.cbegin();
-
-			typename
-			std::vector<T>::const_iterator nodes_end = this->nodes_captures.cend();
-			
-			std::vector<const char*>::const_iterator str_iter = this->str_captures.cbegin();
-			
-			#if FRB_VERBOSE
-			std::list<char>::const_iterator print_iter = restart_str.cbegin();
-			#endif
-
-			{
-
-			T starting_captures = 0;
-			// The first node with should only have starting captures, 
-			// find the first containing final
-			for(; nodes_iter != nodes_end && !starting_captures; ++nodes_iter, ++str_iter){
-				// Search in reverse because starting groups are positive
-				starting_captures = this->count_sorted_backw(*nodes_iter, final);
-				#if FRB_VERBOSE
-				printf("SC: %u\n", starting_captures);
-				
-				++print_iter;
-				#endif
-			}
-
-			// Should be removed. Either contains_captures is wrong, or
-			// checking for starting captures is somehow wrong.
-			if(! starting_captures){
-				#if FRB_VERBOSE
-				printf("[-]Contains captures was true, but we did not find any captures\n");
-				#endif
-
-				return -1;
-			}
-			#if FRB_VERBOSE
-			printf(" Start capture in char: %c\n", *print_iter);
-			++print_iter;
-			#endif
-
-			T starts = 0;
-			for(; starting_captures; --starting_captures, ++starts)
-				this->str_starts.push_back(*str_iter);
-			
-			std::string buffer = std::string();
-			const char* group_start;
-			//char *subStr;
-
-			T new_groups, char_dist;
-
-			pos_array[0] = final;
-			uint_fast8_t pos_index = 1;
-
-			// We can do while because we have not returned,
-			// so, at least once we have to search for starting/final nodes
-			while(nodes_iter != nodes_end){
-				for(new_groups = this->count_sorted(*nodes_iter, -final); 
-							new_groups; --new_groups){
-					group_start = this->str_starts.back();
-					this->str_starts.pop_back();
-					
-					//pos_array[pos_index] = reinterpret_cast<uintptr_t>(
-					//	calloc(std::distance(group_start, *str_iter), sizeof(char))); 
-					//memcpy(static_cast<char *>(pos_array[pos_index++]), group_start, std::distance(group_start, *str_iter));
-
-					#if FRB_VERBOSE
-					printf(" End capture in char: %c\n", *print_iter);
-
-					printf("----%s-\n", pos_array[pos_index]);
-					#endif
-				}
-
-				for(new_groups = this->count_sorted_backw(*nodes_iter, final); new_groups; --new_groups){
-					this->str_starts.push_back(*str_iter);
-					
-					#if FRB_VERBOSE
-					printf(" Start capture in char: %c\n", *print_iter);
-					#endif
-				}
-				
-				++str_iter;
-				++nodes_iter;
-				#if FRB_VERBOSE
-				++print_iter;
-				#endif
-			}
-
-			#if FRB_VERBOSE
-			if(this->str_starts.size())
-				printf("# End of the string\n");
-			#endif
-
-			for(const char* last_str : this->str_starts){
-				pos_array[pos_index] = reinterpret_cast<uintptr_t>(
-						calloc(std::distance(last_str, str), sizeof(char))); 
-				//memcpy(static_cast<char *>(pos_array[pos_index++]), last_str, std::distance(last_str, str));
-
-				#if FRB_VERBOSE
-				printf("----%s-\n", pos_array[pos_index]);
-				#endif
-			}
-
-			this->str_starts.clear();
-	
-			}
-			#endif
-			return final;
-		}
-
-		return 0;
+		return this->data[mreg+FINAL];
 	}
 
-	/*
+	uint match_and_subgroups(const char * str)
+		# if !FRB_PROFILE
+		//__attribute__ ((always_inline))
+		//__attribute__ ((flatten))
+		#endif
+		//__attribute__ ((hot))
+	{ 
+		printf("Warning: match_and_subgroups is not implemented\n");
+	}
+
 	void test(){
-		T mreg = initial_position;
+		T mreg = node_length;
 		std::string order = std::string();
 
 		printf("order: \n");
@@ -1478,12 +1141,12 @@ end_loop:
 			}
 			if(*o){
 				printf("Got to end. Resetting node");
-				mreg = initial_position;
+				mreg = node_length;
 			}
 
-			printf("\norder: ");
-			std::cin >> order;
-			printf("\n");
+				printf("\norder: ");
+				std::cin >> order;
+				printf("\n");
 		}
 		printf("%s\n", this->str().c_str());
 	}
@@ -1492,7 +1155,6 @@ end_loop:
 		where we copy all prefixes from the tree to the subsequent
 		nodes, with no performance nor spatial regression.
 	*/
-
 	
 };
 

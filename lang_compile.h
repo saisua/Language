@@ -22,6 +22,12 @@
 #define LANG_TRANSLATION_PATH LANG_LANGUAGES_FOLDER LANG_TRANSLATION_FOLDER
 #define LANG_LANGUAGE_PATH LANG_LANGUAGES_FOLDER LANG_LANGUAGE_FOLDER
 
+#define LANG_PATH_SEPARATOR '_'
+
+#define LANG_STANDALONE "standalones"
+#define LANG_MERGES "merges"
+#define LANG_ORDER "order"
+
 // This should not be redefined.
 // However, just in case there is one case
 // that needs another compilation step, I'll

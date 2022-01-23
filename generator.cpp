@@ -34,10 +34,13 @@ void def_trans_optimize();
 void trans_lang_optimize();
 void language_optimize();
 */
+template<int size>
+constexpr void add_line(std::array<var_ct, size> lines)
+    __attribute__((always_inline));
 
 int main(int argc, const char ** argv) {
     if(argc < 2){
-        printf("Minimal usage: ./language <filename>\n");
+        printf("Minimal usage: compile <filename>\n");
         return -1;
     }
 
@@ -48,7 +51,8 @@ int main(int argc, const char ** argv) {
     //            ".tree"
     //            , std::ios::in);
 
-    Mreg mreg = Mreg();
+    using mreg_t = uintptr_t;
+    Mreg<mreg_t> mreg = Mreg<mreg_t>();
     //printf("Loading syntax tree in %s\n", LANG_SYNTAX_PATH 
     //                                        LANG_SYNTAX_TREES_FOLDER
     //                                        LANG_FROM
@@ -58,26 +62,26 @@ int main(int argc, const char ** argv) {
 
     //mreg.test();
 
-
     std::string file = read_str_file(argv[1]);
 
-    printf("Matching file %s\n", argv[1]);
+    printf("Matching file %s %s\n", argv[1], file.c_str());
     // This does only accept only one line
-
-
-    mreg_t path = 0, pos = 0;
-    // Count time in microseconds using chrono
-    auto start = std::chrono::high_resolution_clock::now();
     mreg.match_and_subgroups(file.c_str());
 
-    switch(mreg.result_subgr[2]){
-        definition_generated
-    }
-    auto end = std::chrono::high_resolution_clock::now();
+    mreg_t path = 0, pos = 0;
+    C_linked_list<uintptr_t> & data = mreg.result_subgr;
+    std::stack<mreg_t, std::vector<mreg_t>> todo_mreg = std::stack<mreg_t, std::vector<mreg_t>>();
+    std::stack<void *, std::vector<void *>> todo_jump = std::stack<void *, std::vector<void *>>();
 
-    // in microseconds
-    std::chrono::duration<double, std::nano> diff = end - start;
-    printf("Matched in %f microseconds\n", diff.count());
+    definition_generated(data)
+    end_definition_label:
 
     return 0;
+}
+
+template<int size>
+constexpr void add_line(std::array<var_ct, size> lines){
+    for (auto sv : lines) {
+        printf("%s\n", sv);
+    }
 }

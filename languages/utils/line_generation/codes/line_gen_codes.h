@@ -1,1 +1,1 @@
-#define VAR_CODE 4
+#define VAR_CODE 1
