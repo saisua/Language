@@ -68,6 +68,15 @@
             "greater or equal than":">="
         }
     },
+
+    "arithmetic":{
+        "addition":"\\+",
+        "subtraction":"\\-",
+        "multiplication":"\\*",
+        "division":"\\/",
+        "modulo":"\\%",
+        "exponentiation":"\\^"
+    },
     
     "_comment_struct1":"To define structures. The compiler will recognize a structure has started",
     "_comment_struct2":"when it sees one struct_start. Then, it will check every line with de data",
@@ -122,11 +131,21 @@
     "comment":"# .*",
     "compilerData":"//[0-9A-F]+",
 
+    "test":{
+        "test1":"%test3%",
+        "test2":"%t-bool_operation_strict_and%"
+    },
+    "test3":{
+        "test4":"%t-bool_operation_less than%",
+        "test5":"hello its me"
+    },
+
     "_comment_standalones":"Standalones are the general instructions that will start on every newline.",
     "standalones":{
         "print":[
             "print\\(%primitive%\\)",
             "print\\s+%primitive%"
-        ]
+        ],
+        "test":"test\\(%test%\\)"
     }
 }

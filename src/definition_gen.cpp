@@ -14,6 +14,7 @@
 #include "utils/file_read.cpp"
 #include "regex_perm.cpp"
 #include "language_gen.cpp"
+#include "utils/umap_set.cpp"
 
 
 // We must have a prefix in case we collide
@@ -55,7 +56,7 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
 
     {
     std::string ward_start = "#ifndef LANG_DEFINITION_CODES_H\n#define LANG_DEFINITION_CODES_H\n\n";
-    out.write(ward_start.c_str(), ward_start.length());
+    out << ward_start;
     }
 
     printf("Got %d nicknames\n", data.added_nicknames.size());
@@ -326,7 +327,7 @@ inline void generate_codes(Mreg_gen<uintptr_t> & data){
 
     {
     std::string ward_end = "\n#endif";
-    out.write(ward_end.c_str(), ward_end.length());
+    out << ward_end;
     }
 
     out.close();
@@ -361,18 +362,24 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
     
     std::string err;
     // Since there is no id 0, files id must be -1
+    json11::Json syntax = files[Syntax_id-1];
     json11::Json definition = files[Definition_id-1];
     json11::Json translation = files[Translation_id-1];
     json11::Json language = files[Language_id-1];
 
     std::string definitions = "";
-    std::string new_group_code = "#define next_group if(todo_jump.empty()) \\\n\tgoto end_definition_label; \\\n"
-                                    "{ \\\nvoid * next = todo_jump.top(); \\\n"
-                                    "todo_jump.pop(); \\\n"
-                                    "mreg = todo_mreg.top(); \\\n"
-                                    "todo_mreg.pop(); \\\n"
-                                    "goto *next; \\\n}";
-    std::string switch_cases = "#define definition_generated(" data_structure ") \\\n switch(" data_structure "[0]){ \\\n";
+    std::string new_group_code = "#define next_group \\\nif(todo_jump.empty()) \\\n\tgoto end_definition_label; \\\n"
+                                    "else { \\\n\tvoid * next = todo_jump.top(); \\\n\t"
+                                    "todo_jump.pop(); \\\n\t\\\n\t"
+                                    "mreg = todo_mreg.top(); \\\n\t"
+                                    "todo_mreg.pop(); \\\n\t\\\n\t"
+                                    "goto *next; \\\n}"
+                                    "\n\n"
+                                    "#define error printf(\"Error\");"
+                                    "\n\n"
+                                    "#define store_state(next_jump) todo_jump.push( && next_jump ); todo_mreg.push( mreg );";
+    std::string initial_code = "#define definition_generated(" data_structure ") \\\nswitch(" data_structure "[0]){ \\\n";
+    std::string switch_cases = "";
     std::string translation_code = "";
     std::string final_code = "";
     
@@ -471,7 +478,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
         }
         else if(active_trans.is_null()){
             // So that at least matches
-            switch_cases += "case " + nickname_pair.first + ": \\\n\tbreak; \\\n";
+            initial_code += "\tcase " + nickname_pair.first + ": \\\n\tbreak; \\\n";
         }
 
         printf("\nGot object of type ");
@@ -500,14 +507,15 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
         uint start;
 
-        {
-        start = 1 + atoi(find_last_in_tree(translation, case_id, "__merges__").c_str());
-        }
+        json11::Json merge = find_last_in_tree(translation, case_id, "__merges__");
+        if(!merge.is_null()){
+            start = 1 + atoi(merge.string_value().c_str());
+        } else start = 1;
 
         prettify_definition(case_id);
-        switch_cases += ("case " code_pref + case_id +": \\\n\tfinal_label = &&" + label_pref + case_id + "; \\\n\t"+
-                        "start = " + start + "; \\\n\tbreak; \\\n");
-        final_code += label_pref + case_id + ": \\\n\t";
+        initial_code += ("\tcase " code_pref + case_id +": \\\n\t\t"+
+                        "switch(" + data_structure + "[" + std::to_string(start) + "]){ \\\n");
+        final_code += label_pref + case_id + "_final: \\\n";
         // in switch_cases apply switch-goto
         bool first_in_switch = true;
 
@@ -515,6 +523,104 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
         #define vec_stack(type) std::stack<type, std::vector<type>>
  
+        
+        std::unordered_set<std::string> initial_cases = {};
+        std::unordered_map<std::string, uint> path_id = std::unordered_map<std::string, uint>();
+        std::vector<std::string> state = std::vector<std::string>();
+        unordered_map_set(uint, uint) states = unordered_map_set(uint, uint)();
+        vec_stack(uint) state_stack = vec_stack(uint)();
+        vec_stack(uint) start_stack = vec_stack(uint)();
+        
+        // #####
+        // STATE
+        // #####
+
+
+        uint start_find = 0;
+        for(std::string & case_string : get_recursive_strings(syntax, case_id)){
+            std::pair<uint, std::string> found_path = find_id_path(case_string, start_find);
+            
+            while(found_path.first){
+                printf("Found path: \"%s\" in id=%d\n", found_path.second.c_str(), found_path.first);
+                for(std::pair<std::string, std::string> & path : get_recursive_strings_path(files[found_path.first - 1], found_path.second)){
+                    std::string total_path (path.first);
+                    prettify_definition(total_path);
+                    printf(" Got state %s\n", total_path.c_str());
+
+                    if(!path_id.count(total_path)){
+                        path_id[total_path] = path_id.size() + 1;
+                    }
+
+                    std::unordered_set<uint> state_set = std::unordered_set<uint>();
+
+                    uint _ = 0;
+                    // Generate the unordered_set of next possible states
+                    // First find all possible first states, but only if HAS next states
+                    // Keep adding strings to stack, then pop them off to initial_code.
+                    std::pair<uint, std::string> next_states_path = find_id_path(path.second, _);
+                    if(next_states_path.first){
+                        printf("  Detected next states in %s\n", path.second.c_str());
+                        bool first_hash = false;
+                        for(std::pair<std::string, std::string> & next_path : get_recursive_strings_path(files[next_states_path.first - 1], next_states_path.second)){
+                            if(!path_id.count(next_path.first)){
+                                path_id.emplace(next_path.first, path_id.size() + 1);
+                                state.emplace_back(path.first);
+                                printf("%d ", path_id.size());
+
+                                // No break. Need to compute everything to store
+                                // it in the states map
+                                first_hash = true;
+                            } else {
+                                printf("%d ", path_id[next_path.first]);
+                            }
+
+                            state_set.insert(path_id[next_path.first]);
+                        }
+
+                        // State set fails. Maybe i'm not getting something?
+                        if(first_hash || !states.count(state_set)){
+                            printf(" | Detected as new branch.\n");
+
+                            states[state_set] = state.size();
+                            state.emplace_back(case_id + "_" + total_path);
+                            initial_code += "\t\t\tcase " code_pref + total_path + ": \\\n";
+
+                            initial_code += "\t\t\t\tstore_state( " label_pref + case_id + "_final ); \\\n";
+                            initial_code += "\t\t\t\tgoto " label_pref + case_id + "_" + total_path + "; \\\n";
+
+                            // Generate state
+                            switch_cases += label_pref + case_id + "_" + total_path + ": \\\n";
+                        } else {
+                            printf("} Detected as existing branch.\n");
+
+                            std::string label = label_pref + state[states[state_set]];
+
+                            // Redirect to existing state
+                        }
+                    } else {
+                        if(! initial_cases.count(total_path)){
+                            printf("  Detected that %s did not exist and had no children\n", total_path.c_str());
+                            initial_cases.insert(total_path);
+
+                            // Since it does not have next states we have to generate the code directly
+                            // Check if this generates any code, or if it has to convert types.
+                            initial_code += "\t\t\tcase " code_pref + total_path + ": \\\n";
+
+                            initial_code += "\t\t\t\tgoto " label_pref + case_id + "_final; \\\n";
+                        }
+                    }
+                    
+                }
+
+                start_find += 1;
+                found_path = find_id_path(case_string, start_find);
+            }
+        }
+        printf("\n");
+
+        initial_code += "\t\t\t[[unlikely]] \\\n\t\t\tdefault: error; \\\n\t\t} \\\n";
+
+        std::unordered_map<std::string, vec_stack(std::string)> sub_groups;
         vec_stack(json11::Json) conditions = vec_stack(json11::Json)({active_trans});
         vec_stack(uint) objects_seen = vec_stack(uint)({0});
         vec_stack(bool) was_condition = vec_stack(bool)({true});
@@ -604,6 +710,7 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                     prettify_definition(print_path);
 
                     final_code += std::string(depth + 1, '\t') + "translation_" + print_path + "; \\\n";
+                    final_code += std::string(depth + 1, '\t') + "next_group; \\\n";
 
                     translation_code += "#define translation_" + print_path;
 
@@ -900,9 +1007,9 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
             }
         }
 
-        switch_cases += "\tbreak; \\\n";
+        initial_code += std::string(depth + 2, '\t') + "break; \\\n\t\\\n";
     }
-    switch_cases += "\n}";
+    initial_code += "\t\\\n\t[[unlikely]] \\\n\tdefault: error; \\\n}";
 
     printf("END\n"); fflush(stdout);
 
@@ -916,21 +1023,23 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
     current_language.close();
 
     std::fstream out;
-    out.open(current_language_path, std::ios::out);
+    out.open(LANG_DEFINITION_PATH "generated//" LANG_FROM ".h", std::ios::out);
 
-    {
-    std::string ward_start = "#ifndef LANG_DEFINITION_GENERATED_H\n#define LANG_DEFINITION_GENERATED_H\n\n";
-    out.write(ward_start.c_str(), ward_start.length());
-    }
+    out << "#ifndef LANG_DEFINITION_GENERATED_H\n#define LANG_DEFINITION_GENERATED_H\n\n";
 
-    out.write(definitions.c_str(), definitions.length());
-    out.write("\n", 1);
-    out.write(switch_cases.c_str(), switch_cases.length());
-    out.write("\n", 1);
-    out.write(final_code.c_str(), final_code.length());
+    out << new_group_code;
+    out << "\n\n";
+    out << definitions;
+    out << "\n\n";
+    out << initial_code;
+    out << " \\\n\\\n";
+    out << switch_cases;
+    out << "\\\n\\\n";
+    out << final_code;
+    out << "\\\nend_definition_label:\n";
 
-    std::string ward_end = "\n#endif\n\n";
-    out.write(ward_end.c_str(), ward_end.length());
+    std::string ward_end = "\n\n#endif\n\n";
+    out << ward_end;
 
     out.close();
 
@@ -944,9 +1053,9 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
     std::fstream translation_out;
 
-    translation_out.open(current_language_path, std::ios::out);
+    translation_out.open(LANG_TRANSLATION_PATH "code_groups//" LANG_TO ".h", std::ios::out);
 
-    translation_out.write(translation_code.c_str(), translation_code.length());
+    translation_out << translation_code;
 
     translation_out.close();
 }

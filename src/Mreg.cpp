@@ -854,14 +854,12 @@ class Mreg{
 
 	template<T node>
 	inline T count_sorted(const T value) noexcept
-		__attribute__ ((const))
+		//__attribute__ ((const))
 		#if !FRB_PROFILE
-		__attribute__ ((always_inline))
+		//__attribute__ ((always_inline))
 		#endif
-		__attribute__ ((hot))
+		//__attribute__ ((hot))
 	{
-		[[ assert : (node < this->data.size()) ]]
-
 		#if FRB_VERBOSE
 		printf("CS[%u,%d|%u]:", node, this->data[node], value);
 		#endif
@@ -908,14 +906,12 @@ class Mreg{
 
 	template<T node>
 	inline T count_sorted_backw(const T value) noexcept
-		__attribute__ ((const))
+		//__attribute__ ((const))
 		#if !FRB_PROFILE
-		__attribute__ ((always_inline))
+		//__attribute__ ((always_inline))
 		#endif
-		__attribute__ ((hot))
+		//__attribute__ ((hot))
 	{
-		[[ assert : (node < this->data.size()) ]]
-
 		#if FRB_VERBOSE
 		printf("CSB[%u,%d|%u]:", node, this->data[node], value);
 		#endif
@@ -975,8 +971,8 @@ class Mreg{
 		// Should it have a const attribute?
 		
 	{
-		[[ expects : str != nullptr ]]
-		[[ ensures mreg : mreg < this->data.size()]]
+		//[[ expects : str != nullptr ]]
+		//[[ ensures mreg : mreg < this->data.size()]]
 
 		T mreg = node_length;
 

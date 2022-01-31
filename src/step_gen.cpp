@@ -113,6 +113,100 @@ int apply_step(std::fstream& out, const std::vector<std::string> & file_list,
 }
 
 #ifdef Syntax_match_symbol
+// Instead of store Syntax_match and id, store a constexpr array of symbols. Its id is the index of the array.
+std::regex Syntax_match_symbol_regex (Syntax_match_symbol".*?"Syntax_match_symbol);
+std::regex Definition_match_symbol_regex (Definition_match_symbol".*?"Definition_match_symbol);
+std::regex Translation_match_symbol_regex (Translation_match_symbol".*?"Translation_match_symbol);
+std::regex Language_match_symbol_regex (Language_match_symbol".*?"Language_match_symbol);
+inline uint_fast8_t find_id(const std::string id){
+    std::smatch m;
+    uint_fast8_t id_num;
+    uint start = id.length();
+
+    if(std::regex_search(id, m, Syntax_match_symbol_regex)){
+        start = m.position();
+        id_num = Syntax_id;
+    }
+    if(std::regex_search(id, m, Definition_match_symbol_regex) && m.position() < start){
+        start = m.position();
+        id_num = Definition_id;
+    }
+    if(std::regex_search(id, m, Translation_match_symbol_regex) && m.position() < start){
+        start = m.position();
+        id_num = Translation_id;
+    }
+    if(std::regex_search(id, m, Language_match_symbol_regex) && m.position() < start){
+        id_num = Language_id;
+    }
+
+    return id_num;
+}
+
+inline std::string find_path(std::string path, uint start = 0){
+    if(start != 0)
+        path = path.substr(start);
+    start = path.length();
+
+    std::smatch m;
+    uint end;
+
+    if(std::regex_search(path, m, Syntax_match_symbol_regex)){
+        start = m.position();
+        end = m.length();
+    }
+    if(std::regex_search(path, m, Definition_match_symbol_regex) && m.position() < start){
+        start = m.position();
+        end = m.length();
+    }
+    if(std::regex_search(path, m, Translation_match_symbol_regex) && m.position() < start){
+        start = m.position();
+        end = m.length();
+    }
+    if(std::regex_search(path, m, Language_match_symbol_regex) && m.position() < start){
+        start = m.position();
+        end = m.length();
+    }
+
+    return std::string(path.begin() + start + 1, path.begin() + start + end - 1);
+}
+
+
+inline std::pair<uint, std::string> find_id_path(std::string path, uint & start){
+    if(start != 0)
+        path = path.substr(start);
+    start = path.length();
+
+    std::smatch m;
+    uint_fast8_t id;
+    uint end;
+
+    if(std::regex_search(path, m, Syntax_match_symbol_regex)){
+        start = m.position();
+        end = m.length();
+        id = Syntax_id;
+    }
+    if(std::regex_search(path, m, Definition_match_symbol_regex) && m.position() < start){
+        start = m.position();
+        end = m.length();
+        id = Definition_id;
+    }
+    if(std::regex_search(path, m, Translation_match_symbol_regex) && m.position() < start){
+        start = m.position();
+        end = m.length();
+        id = Translation_id;
+    }
+    if(std::regex_search(path, m, Language_match_symbol_regex) && m.position() < start){
+        start = m.position();
+        end = m.length();
+        id = Language_id;
+    }
+
+    if(start == path.length())
+        return std::make_pair(0, std::string());
+
+    return std::make_pair<uint, std::string>(id, std::string(path.begin() + start + 1, path.begin() + start + end - 1));
+}
+
 #define check_id(x) (id.starts_with(x) && id.ends_with(x))
 inline uint_fast8_t file_id(const std::string id){
     if(check_id(Syntax_match_symbol))

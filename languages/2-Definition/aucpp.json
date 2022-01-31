@@ -104,6 +104,12 @@
         },
 
         "structStart":{
+        },
+
+        "test":{
+            "data":{
+                "groups":0
+            }
         }
     }
 }

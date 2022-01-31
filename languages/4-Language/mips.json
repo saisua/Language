@@ -105,5 +105,7 @@
         "syscall"
     ],
 
-    "structStart":"(new_struct_name)"
+    "structStart":"(new_struct_name)",
+
+    "test":"Just a test"
 }

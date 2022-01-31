@@ -21,13 +21,9 @@
 #include <omp.h>
 
 // Local includes
+#include "../lang_compile.h"
 
 
-
-// To get a json11::JSON from a string: json11::Json::parse(string)
-// to get a deeper object from an json11::JSON you can just doc[key]
-// that also return a json11::JSON, which can be used as root in the
-// following functions
 
 // Forward declarations
 json11::Json get_object_from_path(json11::Json & doc, const std::string & path);
@@ -259,7 +255,7 @@ std::vector<json11::Json> get_tree_from_path(json11::Json &doc, const std::strin
                             path.substr(path_num+1).c_str());
                 #endif
 
-                return actual_path;
+                return tree;
         }
 
         last_match = path_num+1;
@@ -316,7 +312,7 @@ std::vector<json11::Json> find_in_tree(json11::Json &doc, const std::string & pa
                             path.substr(path_num+1).c_str());
                 #endif
 
-                return actual_path;
+                return tree;
         }
 
         last_match = path_num+1;
@@ -331,7 +327,7 @@ std::vector<json11::Json> find_in_tree(json11::Json &doc, const std::string & pa
     return tree;
 }
 
-json11::Json find_last_in_tree(json11::Json &doc, const std::string & path, std::string & search){
+json11::Json find_last_in_tree(json11::Json &doc, const std::string & path, const std::string & search){
     size_t path_num = path.find(LANG_PATH_SEPARATOR);
     size_t last_match = 0;
     
