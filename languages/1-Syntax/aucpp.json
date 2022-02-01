@@ -146,6 +146,6 @@
             "print\\(%primitive%\\)",
             "print\\s+%primitive%"
         ],
-        "test":"test\\(%test%\\)"
+        "test":"test\\(%test%, %arithmetic%\\)"
     }
 }

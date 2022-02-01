@@ -144,7 +144,10 @@ inline uint_fast8_t find_id(const std::string id){
 
 inline std::string find_path(std::string path, uint start = 0){
     if(start != 0)
-        path = path.substr(start);
+        if(start > path.length()) return "";
+        else 
+            path = path.substr(start);
+
     start = path.length();
 
     std::smatch m;
@@ -173,8 +176,13 @@ inline std::string find_path(std::string path, uint start = 0){
 
 inline std::pair<uint, std::string> find_id_path(std::string path, uint & start){
     if(start != 0)
-        path = path.substr(start);
+        if(start > path.length()) return std::make_pair(0, "");
+        else 
+            path = path.substr(start);
+        
     start = path.length();
+
+    printf("Searching for an id in %s\n", path.c_str());
 
     std::smatch m;
     uint_fast8_t id;
@@ -203,6 +211,8 @@ inline std::pair<uint, std::string> find_id_path(std::string path, uint & start)
 
     if(start == path.length())
         return std::make_pair(0, std::string());
+
+    printf("  Found %s\n", std::string(path.begin() + start + 1, path.begin() + start + end - 1).c_str());
 
     return std::make_pair<uint, std::string>(id, std::string(path.begin() + start + 1, path.begin() + start + end - 1));
 }

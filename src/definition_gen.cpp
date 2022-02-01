@@ -40,6 +40,18 @@ void update_mreg(Mreg_gen<uintptr_t> &mreg, std::string nickname, uintptr_t new_
 
 std::unordered_set<std::string> max_depth_codes;
 
+inline void reverse_string(std::string & str){
+    uint n = str.length();
+    char aux;
+
+    for (uint i = 0; i < n / 2; i++){
+        aux = str[i];
+
+        str[i] = str[n - i - 1];
+        str[n - i - 1] = aux;
+    }
+}
+
 inline void generate_codes(Mreg_gen<uintptr_t> & data){
     std::fstream out;
     std::fstream current_language;
@@ -505,16 +517,45 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
 
         std::string case_id (nickname_pair.first);
 
-        uint start;
+        
+        prettify_definition(case_id);
+        initial_code += "\tcase " code_pref + case_id +": \\\n";
 
+        std::vector<std::pair<std::string, json11::Json>> found_paths = {};
+        // START SHOULD ONLY BE USED IF __MERGES__
         json11::Json merge = find_last_in_tree(translation, case_id, "__merges__");
         if(!merge.is_null()){
-            start = 1 + atoi(merge.string_value().c_str());
-        } else start = 1;
+            uint start = 1 + atoi(merge.string_value().c_str());
+            initial_code += "\t\tswitch(" data_structure "[" data_structure "["+ std::to_string(start) + "]]){ \\\n";
+        } else {
+            found_paths = find_recursive_path(definition, case_id, "groups");
+            printf("  Found %d groups\n", found_paths.size());
 
-        prettify_definition(case_id);
-        initial_code += ("\tcase " code_pref + case_id +": \\\n\t\t"+
-                        "switch(" + data_structure + "[" + std::to_string(start) + "]){ \\\n");
+            int argument_pos = 0;
+            for(auto & argument : found_paths){
+                if(argument.second.is_number())
+                    argument_pos = argument.second.int_value();
+                else if(argument.second.is_string())
+                    argument_pos = atoi(argument.second.string_value().c_str());
+                else
+                    // Since the argument is not good, we store it empty
+                    argument = {};
+
+                if(argument_pos < 0 || argument_pos >= found_paths.size())
+                    // Since the argument is not good, we store it empty
+                    argument = {};
+            }
+
+            /* Test, this must not be done here
+            for(std::string & path : sorted_paths){
+                if(path.empty())
+                    continue;
+
+                initial_code += "\t\tswitch(" data_structure "[" data_structure "[definition_" +  path + "]]){ \\\n";
+            }
+            */
+        }
+
         final_code += label_pref + case_id + "_final: \\\n";
         // in switch_cases apply switch-goto
         bool first_in_switch = true;
@@ -535,14 +576,39 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
         // STATE
         // #####
 
+        // Using reversed case_string to make sure that the first case is the last in the switch
+        std::string reversed_case_string;
+        std::string path_result = "";
 
-        uint start_find = 0;
-        for(std::string & case_string : get_recursive_strings(syntax, case_id)){
-            std::pair<uint, std::string> found_path = find_id_path(case_string, start_find);
-            
+        printf("State generation start\n");
+        for(std::string case_string : get_recursive_strings(syntax, case_id)){
+            auto sorted_paths_it = found_paths.rbegin();
+            uint start_find = 0;
+            reversed_case_string = std::string(case_string);
+            reverse_string(reversed_case_string);
+    
+            // Good naming could help here, but we are dealing with multiple tree paths
+            // and I'm also doing this on different days.
+            std::pair<uint, std::string> found_path = find_id_path(reversed_case_string, start_find);
+
             while(found_path.first){
-                printf("Found path: \"%s\" in id=%d\n", found_path.second.c_str(), found_path.first);
-                for(std::pair<std::string, std::string> & path : get_recursive_strings_path(files[found_path.first - 1], found_path.second)){
+                while(sorted_paths_it != found_paths.rend() && (*sorted_paths_it).first.empty()){
+                    ++sorted_paths_it;
+                }
+                if(sorted_paths_it != found_paths.rend()){
+                    initial_code += "\t\tswitch(" data_structure "[" data_structure "[definition_" +  (*sorted_paths_it).first + "]]){ \\\n";
+                    
+                    ++sorted_paths_it;
+                }
+
+                // Since the original case_string is reversed, we need to reverse the found_path
+                path_result = found_path.second;
+                reverse_string(path_result);
+
+                printf("Found path: \"%s\" in id=%d [%d]\n", path_result.c_str(), found_path.first, start_find);
+                printf("  Next: %s\n", reversed_case_string.substr(start_find).c_str());
+
+                for(std::pair<std::string, std::string> & path : get_recursive_strings_path(files[found_path.first - 1], path_result)){
                     std::string total_path (path.first);
                     prettify_definition(total_path);
                     printf(" Got state %s\n", total_path.c_str());
@@ -612,13 +678,15 @@ inline void generate_definition_checks(Mreg_gen<uintptr_t> & data,
                     
                 }
 
-                start_find += 1;
-                found_path = find_id_path(case_string, start_find);
+                initial_code += "\t\t\t[[unlikely]] \\\n\t\t\tdefault: error; \\\n\t\t} \\\n";
+
+
+                uint start_offset = start_find;
+                found_path = find_id_path(reversed_case_string, start_find);
+                start_find += start_offset + path_result.length() + 2;
             }
         }
         printf("\n");
-
-        initial_code += "\t\t\t[[unlikely]] \\\n\t\t\tdefault: error; \\\n\t\t} \\\n";
 
         std::unordered_map<std::string, vec_stack(std::string)> sub_groups;
         vec_stack(json11::Json) conditions = vec_stack(json11::Json)({active_trans});

@@ -109,6 +109,9 @@
         "test":{
             "data":{
                 "groups":0
+            },
+            "operation":{
+                "groups":1
             }
         }
     }

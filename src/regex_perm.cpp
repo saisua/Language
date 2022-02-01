@@ -382,4 +382,66 @@ json11::Json find_last_in_tree(json11::Json &doc, const std::string & path, cons
     return match;
 }
 
+std::vector<json11::Json> find_recursive(json11::Json &doc, const std::string path, std::string search){
+    json11::Json root = get_object_from_path(doc, path);
+
+    std::queue<json11::Json> remaining {{root}};
+
+    std::vector<json11::Json> result {};
+
+    //json11::Json leaf;
+    while( ! remaining.empty()){
+        json11::Json active = remaining.front();
+        remaining.pop();
+
+        // if the name of the node is search, store it in result
+
+        if (active.type() == json11::Json::Type::OBJECT)
+            for(auto branch : active.object_items()){
+                if(branch.first == search){
+                    printf("Found %s in %s\n", search.c_str(), path.c_str());
+                    result.push_back(branch.second);
+                } else 
+                    printf("Looking in %s\n", branch.first.c_str());
+
+                remaining.push(branch.second);
+            }
+    }
+
+    return result;
+}
+
+std::vector<std::pair<std::string, json11::Json>> find_recursive_path(json11::Json &doc, const std::string path, std::string search){
+    json11::Json root = get_object_from_path(doc, path);
+
+    std::queue<json11::Json> remaining {{root}};
+    std::queue<std::string> remaining_path {{path}};
+
+    std::vector<std::pair<std::string, json11::Json>> result {};
+
+    //json11::Json leaf;
+    while( ! remaining.empty()){
+        json11::Json active = remaining.front();
+        remaining.pop();
+        std::string active_path = remaining_path.front();
+        remaining_path.pop();
+
+        // if the name of the node is search, store it in result
+
+        if (active.type() == json11::Json::Type::OBJECT)
+            for(auto branch : active.object_items()){
+                if(branch.first == search){
+                    printf("Found %s in %s\n", search.c_str(), path.c_str());
+                    result.emplace_back(active_path, branch.second);
+                } else 
+                    printf("Looking in %s\n", branch.first.c_str());
+
+                remaining.push(branch.second);
+                remaining_path.push(active_path + LANG_PATH_SEPARATOR + branch.first);
+            }
+    }
+
+    return result;
+}
+
 #endif
