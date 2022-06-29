@@ -5,6 +5,7 @@ A concept of a language compiler generator based of json instruction files
 NOTE: Everithing in this README is REALLY outdated. I don't use Hyperscan anymore
 <br>
 https://godbolt.org/z/sG1vE9jdY
+Objective: https://godbolt.org/z/YGj16YxxW
 <br>
 <br>
 Requires a local compilation of intel <a href="https://github.com/intel/hyperscan">hyperscan</a>*
