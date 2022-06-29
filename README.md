@@ -2,7 +2,7 @@
 A concept of a language compiler generator based of json instruction files
 <br>
 <br>
-NOTE: Everithing in this README is REALLY updated. I don't use Hyperscan anymore
+NOTE: Everithing in this README is REALLY outdated. I don't use Hyperscan anymore
 <br>
 https://godbolt.org/z/sG1vE9jdY
 <br>
